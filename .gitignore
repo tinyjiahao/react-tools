@@ -1,0 +1,78 @@
+# 依赖目录
+node_modules
+/.pnp
+.pnp.js
+yarn.lock
+package-lock.json
+
+# 测试覆盖率
+/coverage
+
+# 生产构建文件
+/build
+/dist
+/.next
+/out
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 编辑器目录和文件
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# macOS系统文件
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+*.icloud
+
+# 缓存目录
+.cache
+.parcel-cache
+.eslintcache
+.stylelintcache
+.npm
+.temp
+.tmp
+
+# 类型检查
+tsconfig.tsbuildinfo
+
+# 其他
+.vercel
+.netlify
+storybook-static
