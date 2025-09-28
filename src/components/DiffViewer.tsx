@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { parseDiff, Diff, Hunk } from 'react-diff-view';
 import * as DiffLib from 'diff';
 import 'react-diff-view/style/index.css';
@@ -30,7 +30,7 @@ const DiffViewer = () => {
   };
 
   // JSON 格式化函数
-  const formatJsonText = (text: string): string => {
+  const formatJsonText = useCallback((text: string): string => {
     if (!text.trim()) return text;
 
     try {
@@ -40,18 +40,15 @@ const DiffViewer = () => {
       // 如果不是有效的 JSON，返回原始文本
       return text;
     }
-  };
+  }, []);
 
   // 生成统一差异格式（按行对比）
-  const generateUnifiedDiff = (oldStr: string, newStr: string): string => {
+  const generateUnifiedDiff = useCallback((oldStr: string, newStr: string): string => {
     if (!oldStr && !newStr) return '';
 
     // 如果启用了 JSON 格式化，先格式化文本
     const formattedOldStr = formatJson ? formatJsonText(oldStr) : oldStr;
     const formattedNewStr = formatJson ? formatJsonText(newStr) : newStr;
-
-    const oldLines = formattedOldStr ? formattedOldStr.split('\n') : [];
-    const newLines = formattedNewStr ? formattedNewStr.split('\n') : [];
 
     // 使用diff库计算行级差异
     const diff = DiffLib.diffLines(formattedOldStr, formattedNewStr);
@@ -112,12 +109,12 @@ const DiffViewer = () => {
     }
 
     return unifiedDiff;
-  };
+  }, [formatJson, formatJsonText]);
 
   // 解析差异
   const diffText = useMemo(() => {
     return generateUnifiedDiff(oldText, newText);
-  }, [oldText, newText, formatJson]);
+  }, [oldText, newText, generateUnifiedDiff]);
 
   // 解析差异数据
   const files = useMemo(() => {
