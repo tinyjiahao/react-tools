@@ -61,7 +61,7 @@ const DiffViewer = () => {
       console.error('解析差异失败:', error);
       return [];
     }
-  }, [diffText]);
+  }, [diffText, oldText, newText]);
 
   return (
     <div className="tool-container">
