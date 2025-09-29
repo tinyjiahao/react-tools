@@ -13,26 +13,38 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <nav className="tool-navigation">
-          <button
-            className={activeTool === 'json' ? 'active' : ''}
-            onClick={() => setActiveTool('json')}
-          >
-            JSON格式化
-          </button>
-          <button
-            className={activeTool === 'diff' ? 'active' : ''}
-            onClick={() => setActiveTool('diff')}
-          >
-            文本差异对比
-          </button>
-          <button
-            className={activeTool === 'qr' ? 'active' : ''}
-            onClick={() => setActiveTool('qr')}
-          >
-            URL转二维码
-          </button>
-        </nav>
+        <div className="header-container">
+          <div className="header-left">
+            <nav className="tool-navigation">
+              <button
+                className={activeTool === 'json' ? 'active' : ''}
+                onClick={() => setActiveTool('json')}
+              >
+                <span className="button-icon">📝</span>
+                JSON格式化
+              </button>
+              <button
+                className={activeTool === 'diff' ? 'active' : ''}
+                onClick={() => setActiveTool('diff')}
+              >
+                <span className="button-icon">🔍</span>
+                文本差异对比
+              </button>
+              <button
+                className={activeTool === 'qr' ? 'active' : ''}
+                onClick={() => setActiveTool('qr')}
+              >
+                <span className="button-icon">📱</span>
+                URL转二维码
+              </button>
+            </nav>
+          </div>
+          <div className="header-right">
+            <div className="header-info">
+              <span className="version">v1.0</span>
+            </div>
+          </div>
+        </div>
       </header>
       <main className="App-main">
         {activeTool === 'json' && <JsonFormatter />}
