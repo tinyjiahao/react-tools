@@ -2,11 +2,13 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { parseDiff, Diff, Hunk } from 'react-diff-view';
 import * as DiffLib from 'diff';
 import 'react-diff-view/style/index.css';
+import MessageToast from './MessageToast';
 
 const DiffViewer = () => {
   const [oldText, setOldText] = useState<string>('');
   const [newText, setNewText] = useState<string>('');
   const [formatJson, setFormatJson] = useState<boolean>(true);
+  const [showCopyToast, setShowCopyToast] = useState<boolean>(false);
 
   // 默认示例文本
   const defaultOldText = `{
@@ -27,6 +29,13 @@ const DiffViewer = () => {
   const handleClear = () => {
     setOldText('');
     setNewText('');
+  };
+
+  const copyToClipboard = () => {
+    if (diffText) {
+      navigator.clipboard.writeText(diffText);
+      setShowCopyToast(true);
+    }
   };
 
   // JSON 格式化函数
@@ -63,7 +72,11 @@ const DiffViewer = () => {
     let hunkLinesNew = 0;
 
     diff.forEach((part, index) => {
-      const lines = part.value.split('\n').filter(line => line !== '');
+      const lines = part.value.split('\n');
+      // 移除最后一个空行（如果有的话）
+      if (lines.length > 0 && lines[lines.length - 1] === '') {
+        lines.pop();
+      }
 
       if (part.added) {
         // 新增的行
@@ -80,29 +93,18 @@ const DiffViewer = () => {
           oldLineNum++;
         });
       } else {
-        // 未改变的行
-        if (hunkContent) {
-          // 输出当前的hunk
-          unifiedDiff += `@@ -${hunkStartOld},${hunkLinesOld} +${hunkStartNew},${hunkLinesNew} @@\n`;
-          unifiedDiff += hunkContent;
-
-          // 重置hunk
-          hunkContent = '';
-          hunkStartOld = oldLineNum;
-          hunkStartNew = newLineNum;
-          hunkLinesOld = 0;
-          hunkLinesNew = 0;
-        }
-
-        // 更新行号
-        oldLineNum += lines.length;
-        newLineNum += lines.length;
-        hunkStartOld = oldLineNum;
-        hunkStartNew = newLineNum;
+        // 未改变的行 - 确保显示所有内容
+        lines.forEach(line => {
+          hunkContent += ` ${line}\n`;
+          hunkLinesOld++;
+          hunkLinesNew++;
+          oldLineNum++;
+          newLineNum++;
+        });
       }
     });
 
-    // 输出最后一个hunk
+    // 输出hunk
     if (hunkContent) {
       unifiedDiff += `@@ -${hunkStartOld},${hunkLinesOld} +${hunkStartNew},${hunkLinesNew} @@\n`;
       unifiedDiff += hunkContent;
@@ -159,6 +161,9 @@ const DiffViewer = () => {
             加载示例
           </button>
           <button onClick={handleClear}>清空</button>
+          <button onClick={copyToClipboard} disabled={!diffText}>
+            复制差异
+          </button>
           <label className="format-toggle">
             <input
               type="checkbox"
@@ -186,6 +191,9 @@ const DiffViewer = () => {
             {files.length === 0 && <p>无法生成差异视图，请检查输入文本。</p>}
           </div>
         )}
+
+        {/* 复制成功提示 */}
+        <MessageToast show={showCopyToast} message="复制成功！" />
       </div>
     </div>
   );
