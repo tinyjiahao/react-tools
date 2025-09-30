@@ -16,7 +16,7 @@ const UrlEncoder = () => {
       // 对每个参数值进行编码
       const encodedParams = new URLSearchParams();
       searchParams.forEach((value, key) => {
-        encodedParams.set(key, encodeURIComponent(value));
+        encodedParams.set(key, encodeURI(value));
       });
 
       // 构建新的URL，保持其他部分不变
@@ -28,7 +28,7 @@ const UrlEncoder = () => {
     } catch (err) {
       // 如果不是完整的URL，尝试对整个字符串进行编码
       try {
-        const encoded = encodeURIComponent(input);
+        const encoded = encodeURI(input);
         setOutput(encoded);
         setError('');
       } catch (fallbackErr) {

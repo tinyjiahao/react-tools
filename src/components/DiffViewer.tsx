@@ -63,8 +63,6 @@ const DiffViewer = () => {
     const diff = DiffLib.diffLines(formattedOldStr, formattedNewStr);
 
     let unifiedDiff = `--- a/file\n+++ b/file\n`;
-    let oldLineNum = 1;
-    let newLineNum = 1;
     let hunkContent = '';
     let hunkStartOld = 1;
     let hunkStartNew = 1;
@@ -83,14 +81,12 @@ const DiffViewer = () => {
         lines.forEach(line => {
           hunkContent += `+${line}\n`;
           hunkLinesNew++;
-          newLineNum++;
         });
       } else if (part.removed) {
         // 删除的行
         lines.forEach(line => {
           hunkContent += `-${line}\n`;
           hunkLinesOld++;
-          oldLineNum++;
         });
       } else {
         // 未改变的行 - 确保显示所有内容
@@ -98,8 +94,6 @@ const DiffViewer = () => {
           hunkContent += ` ${line}\n`;
           hunkLinesOld++;
           hunkLinesNew++;
-          oldLineNum++;
-          newLineNum++;
         });
       }
     });
