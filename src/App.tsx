@@ -131,13 +131,12 @@ function App() {
 
   const handleCategoryClick = (categoryName: string) => {
     if (layoutMode === 'left') {
-      // 左侧布局：多选展开/折叠
+      // 左侧布局：点击按钮主体只负责展开，不折叠
       setShowDropdown(prev => {
-        if (prev.includes(categoryName)) {
-          return prev.filter(name => name !== categoryName);
-        } else {
+        if (!prev.includes(categoryName)) {
           return [...prev, categoryName];
         }
+        return prev;
       });
     } else {
       // 顶部布局：互斥展开
@@ -150,6 +149,20 @@ function App() {
       });
     }
     setActiveCategory(categoryName);
+  };
+
+  // 专门处理箭头的点击，用于折叠/展开
+  const handleArrowClick = (e: React.MouseEvent, categoryName: string) => {
+    e.stopPropagation();
+    if (layoutMode === 'left') {
+      setShowDropdown(prev => {
+        if (prev.includes(categoryName)) {
+          return prev.filter(name => name !== categoryName);
+        } else {
+          return [...prev, categoryName];
+        }
+      });
+    }
   };
 
   const handleToolSelect = (toolId: ToolType) => {
@@ -190,7 +203,13 @@ function App() {
                     <span className="nav-icon">{category.icon}</span>
                     <span className="nav-text">{category.name}</span>
                     {category.tools.length > 0 && (
-                      <span className="nav-arrow">▼</span>
+                      <span 
+                        className="nav-arrow"
+                        onClick={(e) => handleArrowClick(e, category.name)}
+                        style={{ padding: '4px', cursor: 'pointer' }} // 增加点击区域
+                      >
+                        ▼
+                      </span>
                     )}
                   </button>
                   {showDropdown.includes(category.name) && category.tools.length > 0 && (
