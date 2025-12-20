@@ -71,7 +71,15 @@ const paramToToolId: Record<string, ToolType> = {
 function App() {
   const [activeTool, setActiveTool] = useState<ToolType>('json');
   const [activeCategory, setActiveCategory] = useState<string>('JSON工具');
-  const [showDropdown, setShowDropdown] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState<string[]>([]);
+  const [layoutMode, setLayoutMode] = useState<'top' | 'left'>(() => {
+    return (localStorage.getItem('layoutMode') as 'top' | 'left') || 'top';
+  });
+
+  // 保存布局设置到本地存储
+  useEffect(() => {
+    localStorage.setItem('layoutMode', layoutMode);
+  }, [layoutMode]);
 
   // 页面加载时解析URL参数
   useEffect(() => {
@@ -93,6 +101,26 @@ function App() {
     }
   }, []);
 
+  // 监听布局变化，处理菜单展开状态
+  useEffect(() => {
+    if (layoutMode === 'top') {
+      setShowDropdown([]); // 顶部模式下默认收起所有
+    } else {
+      // 左侧模式下，确保当前激活工具所在的分类是展开的
+      const currentCategory = toolCategories.find(c => 
+        c.tools.some(t => t.id === activeTool)
+      );
+      if (currentCategory) {
+        setShowDropdown(prev => {
+           if (!prev.includes(currentCategory.name)) {
+             return [...prev, currentCategory.name];
+           }
+           return prev;
+        });
+      }
+    }
+  }, [layoutMode, activeTool]);
+
   // 更新URL参数
   const updateUrl = (toolId: ToolType) => {
     const param = toolIdToParam[toolId];
@@ -102,17 +130,34 @@ function App() {
   };
 
   const handleCategoryClick = (categoryName: string) => {
-    if (showDropdown === categoryName) {
-      setShowDropdown(null);
+    if (layoutMode === 'left') {
+      // 左侧布局：多选展开/折叠
+      setShowDropdown(prev => {
+        if (prev.includes(categoryName)) {
+          return prev.filter(name => name !== categoryName);
+        } else {
+          return [...prev, categoryName];
+        }
+      });
     } else {
-      setShowDropdown(categoryName);
-      setActiveCategory(categoryName);
+      // 顶部布局：互斥展开
+      setShowDropdown(prev => {
+        if (prev.includes(categoryName)) {
+          return [];
+        } else {
+          return [categoryName];
+        }
+      });
     }
+    setActiveCategory(categoryName);
   };
 
   const handleToolSelect = (toolId: ToolType) => {
     setActiveTool(toolId);
-    setShowDropdown(null);
+    // 在顶部布局下，选择工具后关闭下拉菜单；左侧布局保持不变
+    if (layoutMode === 'top') {
+      setShowDropdown([]);
+    }
     updateUrl(toolId);
   };
 
@@ -127,10 +172,14 @@ function App() {
   const currentTool = getCurrentTool();
 
   return (
-    <div className="App">
+    <div className={`App ${layoutMode === 'left' ? 'layout-left' : ''}`}>
       <header className="App-header">
         <div className="header-container">
           <div className="header-left">
+            <div className="logo" style={{ marginRight: '20px' }}>
+              <span className="logo-icon">🛠️</span>
+              <span className="logo-text">Tools</span>
+            </div>
             <nav className="main-navigation">
               {toolCategories.map((category) => (
                 <div key={category.name} className="nav-item">
@@ -144,7 +193,7 @@ function App() {
                       <span className="nav-arrow">▼</span>
                     )}
                   </button>
-                  {showDropdown === category.name && category.tools.length > 0 && (
+                  {showDropdown.includes(category.name) && category.tools.length > 0 && (
                     <div className="dropdown-menu">
                       {category.tools.map((tool) => (
                         <button
@@ -166,6 +215,14 @@ function App() {
           </div>
           <div className="header-right">
             <div className="header-actions">
+              <button 
+                className="btn-icon"
+                onClick={() => setLayoutMode(layoutMode === 'top' ? 'left' : 'top')}
+                title={layoutMode === 'top' ? "切换到侧边栏" : "切换到顶部栏"}
+                style={{ fontSize: '18px' }}
+              >
+                {layoutMode === 'top' ? '⬅️' : '⬆️'}
+              </button>
               <span className="current-tool-name">{currentTool.name}</span>
               <div className="header-info">
                 <span className="version">v2.0</span>
