@@ -155,8 +155,8 @@ const DiffViewer = () => {
             加载示例
           </button>
           <button onClick={handleClear}>清空</button>
-          <button onClick={copyToClipboard} disabled={!diffText}>
-            复制差异
+          <button onClick={copyToClipboard} disabled={!diffText} title="复制差异">
+            📋
           </button>
           <label className="format-toggle">
             <input

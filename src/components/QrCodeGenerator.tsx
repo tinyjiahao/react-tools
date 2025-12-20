@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+
+interface HistoryItem {
+  id: string;
+  url: string;
+  timestamp: number;
+  note?: string;
+}
 
 const QrCodeGenerator = () => {
   const [url, setUrl] = useState<string>('https://www.example.com');
@@ -8,6 +15,64 @@ const QrCodeGenerator = () => {
   const [fgColor, setFgColor] = useState<string>('#000000');
   const [includeMargin, setIncludeMargin] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // 加载历史记录
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('qr_history');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        setHistory(parsedHistory);
+        // 如果有历史记录，自动填充最新的一条
+        if (parsedHistory.length > 0) {
+          setUrl(parsedHistory[0].url);
+        }
+      } catch (e) {
+        console.error('Failed to parse history:', e);
+      }
+    }
+  }, []);
+
+  // 保存历史记录
+  const addToHistory = (newUrl: string) => {
+    const newItem: HistoryItem = {
+      id: Date.now().toString(),
+      url: newUrl,
+      timestamp: Date.now(),
+    };
+
+    setHistory((prev) => {
+      // 过滤掉重复的 URL，只保留最新的
+      const filtered = prev.filter((item) => item.url !== newUrl);
+      const newHistory = [newItem, ...filtered].slice(0, 100); // 只保留最近 100 条
+      localStorage.setItem('qr_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  const deleteHistoryItem = (id: string) => {
+    setHistory((prev) => {
+      const newHistory = prev.filter((item) => item.id !== id);
+      localStorage.setItem('qr_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  const updateHistoryNote = (id: string, note: string) => {
+    setHistory((prev) => {
+      const newHistory = prev.map((item) =>
+        item.id === id ? { ...item, note } : item
+      );
+      localStorage.setItem('qr_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('qr_history');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +91,8 @@ const QrCodeGenerator = () => {
       setError('URL过长，无法生成二维码。建议使用URL缩短服务。');
       return;
     }
+
+    addToHistory(url);
   };
 
   const downloadQRCode = () => {
@@ -161,6 +228,53 @@ const QrCodeGenerator = () => {
           <p className="qr-url-display">URL: {url}</p>
         </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="history-section">
+          <div className="history-header">
+            <h3>历史记录</h3>
+            <button onClick={clearHistory} className="clear-btn">清空历史</button>
+          </div>
+          <div className="history-list">
+            {history.map((item) => (
+              <div key={item.id} className="history-item" onClick={() => setUrl(item.url)}>
+                <div className="history-content">
+                  <div className="history-url" title={item.url}>{item.url}</div>
+                  <div className="history-meta">
+                    <span className="history-time">{new Date(item.timestamp).toLocaleString()}</span>
+                    {item.note && <span className="history-note" title={item.note}>{item.note}</span>}
+                  </div>
+                </div>
+                <div className="history-actions">
+                  <button
+                    className="action-btn edit-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newNote = prompt('请输入备注', item.note || '');
+                      if (newNote !== null) {
+                        updateHistoryNote(item.id, newNote);
+                      }
+                    }}
+                    title="修改备注"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    className="action-btn delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteHistoryItem(item.id);
+                    }}
+                    title="删除"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

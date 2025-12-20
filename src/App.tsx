@@ -4,9 +4,11 @@ import JsonFormatter from './components/JsonFormatter';
 import DiffViewer from './components/DiffViewer';
 import QrCodeGenerator from './components/QrCodeGenerator';
 import UrlEncoder from './components/UrlEncoder';
+import ByteConverter from './components/ByteConverter';
+import Base64Encoder from './components/Base64Encoder';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64';
 
 // 定义工具分类
 interface ToolCategory {
@@ -31,7 +33,9 @@ const toolCategories: ToolCategory[] = [
     name: '文本工具',
     icon: '📝',
     tools: [
-      { id: 'diff', name: '文本差异对比', description: '比较两个文本的差异' }
+      { id: 'diff', name: '文本差异对比', description: '比较两个文本的差异' },
+      { id: 'byte-converter', name: '字节转换', description: '不同字节单位之间的转换' },
+      { id: 'base64', name: 'Base64压缩编码', description: '文本压缩并Base64编码' }
     ]
   },
   {
@@ -49,7 +53,9 @@ const toolIdToParam: Record<ToolType, string> = {
   'json': 'json',
   'diff': 'diff',
   'qr': 'qr',
-  'url-encoder': 'url-encoder'
+  'url-encoder': 'url-encoder',
+  'byte-converter': 'byte-converter',
+  'base64': 'base64'
 };
 
 // URL参数到工具ID的映射
@@ -57,7 +63,9 @@ const paramToToolId: Record<string, ToolType> = {
   'json': 'json',
   'diff': 'diff',
   'qr': 'qr',
-  'url-encoder': 'url-encoder'
+  'url-encoder': 'url-encoder',
+  'byte-converter': 'byte-converter',
+  'base64': 'base64'
 };
 
 function App() {
@@ -172,6 +180,8 @@ function App() {
           {activeTool === 'diff' && <DiffViewer />}
           {activeTool === 'qr' && <QrCodeGenerator />}
           {activeTool === 'url-encoder' && <UrlEncoder />}
+          {activeTool === 'byte-converter' && <ByteConverter />}
+          {activeTool === 'base64' && <Base64Encoder />}
         </div>
       </main>
     </div>
