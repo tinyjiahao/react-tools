@@ -55,6 +55,11 @@ const R2FileManager = () => {
 
   // 列出文件
   const listFiles = useCallback(async (currentConfig = config) => {
+    console.log('currentConfig', currentConfig);
+    if (!currentConfig.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -69,47 +74,64 @@ const R2FileManager = () => {
 
   // 加载配置
   useEffect(() => {
-    const savedConfig = localStorage.getItem('r2_config');
-    if (savedConfig) {
+    const r2_config = localStorage.getItem('r2_config');
+    console.log('r2_config', r2_config);
+    if (r2_config) {
       try {
-        const parsed = JSON.parse(savedConfig);
-        setConfig(parsed);
-        // 直接调用 API 获取文件列表
-        const loadInitialFiles = async () => {
-          setLoading(true);
-          setError('');
-          try {
-            const headers: Record<string, string> = {
-              'Content-Type': 'application/json',
-            };
-            if (parsed.apiToken) {
-              headers['Authorization'] = `Bearer ${parsed.apiToken}`;
+        const parsed = JSON.parse(r2_config);
+        // 验证配置有效
+        if (parsed.workerUrl) {
+          setConfig(parsed);
+          // 配置加载后再调用 API 获取文件列表
+          const loadInitialFiles = async () => {
+            setLoading(true);
+            setError('');
+            try {
+              const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+              };
+              if (parsed.apiToken) {
+                headers['Authorization'] = `Bearer ${parsed.apiToken}`;
+              }
+              const response = await fetch(`${parsed.workerUrl}?action=list`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({}),
+              });
+              if (response.ok) {
+                const result = await response.json();
+                setFiles(result.files || []);
+              } else {
+                const errorData = await response.json().catch(() => ({ error: response.statusText }));
+                setError(errorData.error || `加载失败 (${response.status})`);
+              }
+            } catch (err) {
+              setError((err as Error).message);
+            } finally {
+              setLoading(false);
             }
-            const response = await fetch(`${parsed.workerUrl}?action=list`, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({}),
-            });
-            if (response.ok) {
-              const result = await response.json();
-              setFiles(result.files || []);
-            }
-          } catch (err) {
-            setError((err as Error).message);
-          } finally {
-            setLoading(false);
-          }
-        };
-        loadInitialFiles();
+          };
+          loadInitialFiles();
+        } else {
+          setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+        }
       } catch (e) {
         console.error('Failed to parse config:', e);
+        setError('配置读取失败，请重新配置');
       }
+    } else {
+      // 没有配置时显示提示
+      setError('未配置 R2 存储信息，请点击设置按钮进行配置');
     }
   }, []);
 
   // 上传文件
   const uploadToR2 = async () => {
     if (!uploadFile) return;
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -164,6 +186,10 @@ const R2FileManager = () => {
   // 删除文件
   const deleteFile = async (key: string) => {
     if (!window.confirm(`确定要删除文件 "${key}" 吗？`)) return;
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -211,6 +237,11 @@ const R2FileManager = () => {
   // 获取文件URL - 复制文件访问链接（不包含 token，更安全）
   // 注意：直接打开此链接需要 Worker 的 /file/ 路由公开访问或使用其他验证方式
   const getFileUrl = async (key: string) => {
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+
     try {
       // 使用配置的 workerUrl 构造文件访问链接（不包含 token）
       const baseUrl = config.workerUrl.replace(/\/$/, '');
@@ -230,6 +261,11 @@ const R2FileManager = () => {
 
   // 下载文件 - 使用 fetch 下载，token 放在 header 中不暴露在 url
   const downloadFile = async (key: string) => {
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
@@ -342,6 +378,11 @@ const R2FileManager = () => {
 
   // 预览文件
   const previewFileContent = async (key: string) => {
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+
     setPreviewLoading(true);
     setError('');
     try {
