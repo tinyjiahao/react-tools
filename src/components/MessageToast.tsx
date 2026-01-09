@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from './Icon';
 
 interface MessageToastProps {
   show: boolean;
@@ -29,7 +30,7 @@ const MessageToast: React.FC<MessageToastProps> = ({
   return (
     <div className="copy-toast">
       <div className="toast-content">
-        <span className="toast-icon">✅</span>
+        <Icon name="check" size={20} className="toast-icon" />
         <span className="toast-message">{message}</span>
       </div>
     </div>

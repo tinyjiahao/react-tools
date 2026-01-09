@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import jsonpath from 'jsonpath';
 import MessageToast from './MessageToast';
+import Icon from './Icon';
 
 const examples = {
   store: {
@@ -291,7 +292,7 @@ const JsonFormatter = () => {
             />
             {error && (
               <div className="error-message">
-                <span className="error-icon">⚠️</span>
+                <Icon name="warning" size={18} className="error-icon" />
                 {error}
               </div>
             )}
@@ -306,7 +307,7 @@ const JsonFormatter = () => {
                 <>
                   <span className="char-count">{output.length} 字符</span>
                   <button className="btn-icon" onClick={copyToClipboard} title="复制到剪贴板">
-                    📋
+                    <Icon name="copy" size={16} />
                   </button>
                 </>
               )}

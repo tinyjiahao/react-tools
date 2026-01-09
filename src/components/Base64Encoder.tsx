@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import pako from 'pako';
 import SnappyJS from 'snappyjs';
 import MessageToast from './MessageToast';
+import Icon from './Icon';
 
 type CompressionType = 'none' | 'gzip' | 'snappy';
 
@@ -219,7 +220,7 @@ const Base64Encoder = () => {
 
         {error && (
           <div className="error-message">
-            <span className="error-icon">⚠️</span>
+            <Icon name="warning" size={18} className="error-icon" />
             {error}
           </div>
         )}
@@ -233,7 +234,7 @@ const Base64Encoder = () => {
             disabled={!output}
             title="复制结果"
           >
-            📋
+            <Icon name="copy" size={16} />
           </button>
         </div>
 

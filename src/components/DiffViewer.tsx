@@ -3,6 +3,7 @@ import { parseDiff, Diff, Hunk } from 'react-diff-view';
 import * as DiffLib from 'diff';
 import 'react-diff-view/style/index.css';
 import MessageToast from './MessageToast';
+import Icon from './Icon';
 
 const DiffViewer = () => {
   const [oldText, setOldText] = useState<string>('');
@@ -156,7 +157,7 @@ const DiffViewer = () => {
           </button>
           <button onClick={handleClear}>清空</button>
           <button onClick={copyToClipboard} disabled={!diffText} title="复制差异">
-            📋
+            <Icon name="copy" size={16} />
           </button>
           <label className="format-toggle">
             <input

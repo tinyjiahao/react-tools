@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import MessageToast from './MessageToast';
+import Icon from './Icon';
 
 interface HistoryItem {
   id: string;
@@ -163,7 +164,7 @@ const UrlEncoder = () => {
 
         {error && (
           <div className="error-message">
-            <span className="error-icon">⚠️</span>
+            <Icon name="warning" size={18} className="error-icon" />
             {error}
           </div>
         )}

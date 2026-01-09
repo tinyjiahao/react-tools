@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import Icon from './Icon';
 
 interface HistoryItem {
   id: string;
@@ -131,13 +132,13 @@ const QrCodeGenerator = () => {
               />
               {error && (
                 <div className="error-message">
-                  <span className="error-icon">⚠️</span>
+                  <Icon name="warning" size={18} className="error-icon" />
                   {error}
                 </div>
               )}
               {url.length > 1000 && !error && (
                 <div className="warning-message">
-                  <span className="warning-icon">⚠️</span>
+                  <Icon name="warning" size={18} className="warning-icon" />
                   URL较长 ({url.length} 字符)，可能无法生成二维码
                 </div>
               )}
@@ -216,7 +217,7 @@ const QrCodeGenerator = () => {
               />
             ) : (
               <div className="error-state">
-                <div className="error-icon">❌</div>
+                <Icon name="error" size={48} className="error-icon" />
                 <p>URL过长，无法生成二维码</p>
                 <p className="error-desc">
                   当前URL长度: {url.length} 字符<br/>

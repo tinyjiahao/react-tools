@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import MessageToast from './MessageToast';
+import Icon from './Icon';
 
 type ByteUnit = 'bit' | 'byte' | 'kb' | 'mb' | 'gb' | 'tb';
 
@@ -93,12 +94,12 @@ const ByteConverter = () => {
                     placeholder="0"
                   />
                   {displayValue && (
-                    <button 
+                    <button
                       className="row-copy-btn"
                       onClick={() => copyToClipboard(displayValue)}
                       title="复制"
                     >
-                      📋
+                      <Icon name="copy" size={14} />
                     </button>
                   )}
                 </div>

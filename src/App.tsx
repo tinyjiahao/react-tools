@@ -6,9 +6,12 @@ import QrCodeGenerator from './components/QrCodeGenerator';
 import UrlEncoder from './components/UrlEncoder';
 import ByteConverter from './components/ByteConverter';
 import Base64Encoder from './components/Base64Encoder';
+import R2FileManager from './components/R2FileManager';
+import Icon from './components/Icon';
+import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager';
 
 // 定义工具分类
 interface ToolCategory {
@@ -24,14 +27,14 @@ interface ToolCategory {
 const toolCategories: ToolCategory[] = [
   {
     name: 'JSON工具',
-    icon: '🔧',
+    icon: 'json',
     tools: [
       { id: 'json', name: 'JSON格式化', description: 'JSON数据格式化和验证' }
     ]
   },
   {
     name: '文本工具',
-    icon: '📝',
+    icon: 'diff',
     tools: [
       { id: 'diff', name: '文本差异对比', description: '比较两个文本的差异' },
       { id: 'byte-converter', name: '字节转换', description: '不同字节单位之间的转换' },
@@ -40,10 +43,17 @@ const toolCategories: ToolCategory[] = [
   },
   {
     name: 'URL工具',
-    icon: '🔗',
+    icon: 'url',
     tools: [
       { id: 'qr', name: 'URL转二维码', description: '生成二维码' },
       { id: 'url-encoder', name: 'URL编解码', description: 'URL编码和解码' }
+    ]
+  },
+  {
+    name: '存储工具',
+    icon: 'cloud',
+    tools: [
+      { id: 'r2-manager', name: 'R2文件管理', description: 'Cloudflare R2存储文件管理' }
     ]
   }
 ];
@@ -55,7 +65,8 @@ const toolIdToParam: Record<ToolType, string> = {
   'qr': 'qr',
   'url-encoder': 'url-encoder',
   'byte-converter': 'byte-converter',
-  'base64': 'base64'
+  'base64': 'base64',
+  'r2-manager': 'r2-manager'
 };
 
 // URL参数到工具ID的映射
@@ -65,7 +76,8 @@ const paramToToolId: Record<string, ToolType> = {
   'qr': 'qr',
   'url-encoder': 'url-encoder',
   'byte-converter': 'byte-converter',
-  'base64': 'base64'
+  'base64': 'base64',
+  'r2-manager': 'r2-manager'
 };
 
 function App() {
@@ -75,6 +87,13 @@ function App() {
   const [layoutMode, setLayoutMode] = useState<'top' | 'left'>(() => {
     return (localStorage.getItem('layoutMode') as 'top' | 'left') || 'top';
   });
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+
+  // 应用主题颜色
+  useEffect(() => {
+    const themeColor = localStorage.getItem('themeColor') || '#F6821F';
+    document.documentElement.style.setProperty('--cf-orange', themeColor);
+  }, []);
 
   // 保存布局设置到本地存储
   useEffect(() => {
@@ -190,7 +209,7 @@ function App() {
         <div className="header-container">
           <div className="header-left">
             <div className="logo" style={{ marginRight: '20px' }}>
-              <span className="logo-icon">🛠️</span>
+              <Icon name="logo" size={32} className="logo-icon" />
               <span className="logo-text">Tools</span>
             </div>
             <nav className="main-navigation">
@@ -200,13 +219,13 @@ function App() {
                     className={`nav-button ${activeCategory === category.name ? 'active' : ''}`}
                     onClick={() => handleCategoryClick(category.name)}
                   >
-                    <span className="nav-icon">{category.icon}</span>
+                    <Icon name={category.icon} size={18} className="nav-icon" />
                     <span className="nav-text">{category.name}</span>
                     {category.tools.length > 0 && (
-                      <span 
+                      <span
                         className="nav-arrow"
                         onClick={(e) => handleArrowClick(e, category.name)}
-                        style={{ padding: '4px', cursor: 'pointer' }} // 增加点击区域
+                        style={{ padding: '4px', cursor: 'pointer' }}
                       >
                         ▼
                       </span>
@@ -234,18 +253,21 @@ function App() {
           </div>
           <div className="header-right">
             <div className="header-actions">
-              <button 
+              <button
                 className="btn-icon"
                 onClick={() => setLayoutMode(layoutMode === 'top' ? 'left' : 'top')}
                 title={layoutMode === 'top' ? "切换到侧边栏" : "切换到顶部栏"}
-                style={{ fontSize: '18px' }}
               >
-                {layoutMode === 'top' ? '⬅️' : '⬆️'}
+                <Icon name={layoutMode === 'top' ? 'sidebar-left' : 'header-top'} size={20} />
+              </button>
+              <button
+                className="btn-icon"
+                onClick={() => setShowSettingsDialog(true)}
+                title="设置"
+              >
+                <Icon name="gear" size={20} />
               </button>
               <span className="current-tool-name">{currentTool.name}</span>
-              <div className="header-info">
-                <span className="version">v2.0</span>
-              </div>
             </div>
           </div>
         </div>
@@ -258,8 +280,14 @@ function App() {
           {activeTool === 'url-encoder' && <UrlEncoder />}
           {activeTool === 'byte-converter' && <ByteConverter />}
           {activeTool === 'base64' && <Base64Encoder />}
+          {activeTool === 'r2-manager' && <R2FileManager />}
         </div>
       </main>
+
+      <SettingsDialog
+        isOpen={showSettingsDialog}
+        onClose={() => setShowSettingsDialog(false)}
+      />
     </div>
   );
 }
