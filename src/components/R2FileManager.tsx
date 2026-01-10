@@ -25,6 +25,9 @@ const R2FileManager = () => {
   const [copiedUrl, setCopiedUrl] = useState('');
   const [previewFile, setPreviewFile] = useState<{ name: string; content: string; type: 'text' | 'image' } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renamingFile, setRenamingFile] = useState<string>('');
+  const [newFileName, setNewFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 调用 Workers API
@@ -201,6 +204,61 @@ const R2FileManager = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 重命名文件
+  const renameFile = async () => {
+    if (!newFileName.trim()) {
+      setError('新文件名不能为空');
+      return;
+    }
+
+    // 从 localStorage 读取最新配置
+    const r2_config = localStorage.getItem('r2_config');
+    if (!r2_config) {
+      setError('未配置 R2 存储信息，请点击设置按钮进行配置');
+      return;
+    }
+
+    const currentConfig = JSON.parse(r2_config) as Config;
+    if (!currentConfig.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const oldKey = renamingFile;
+      // 保持目录结构（如果有）
+      const lastSlashIndex = oldKey.lastIndexOf('/');
+      const prefix = lastSlashIndex >= 0 ? oldKey.substring(0, lastSlashIndex + 1) : '';
+      const newKey = prefix + newFileName;
+
+      await callWorkerApi('rename', { oldKey, newKey }, currentConfig);
+
+      setShowRenameDialog(false);
+      setNewFileName('');
+      setRenamingFile('');
+      listFiles();
+      setShowCopyToast(true);
+      setCopiedUrl('重命名成功！');
+      setTimeout(() => setShowCopyToast(false), 2000);
+    } catch (err) {
+      setError(`重命名失败: ${(err as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 打开重命名对话框
+  const openRenameDialog = (key: string) => {
+    // 提取纯文件名（去掉目录前缀）
+    const fileName = key.includes('/') ? key.substring(key.lastIndexOf('/') + 1) : key;
+    setRenamingFile(key);
+    setNewFileName(fileName);
+    setShowRenameDialog(true);
+    setError('');
   };
 
   // 复制到剪贴板的工具函数
@@ -558,6 +616,13 @@ const R2FileManager = () => {
                           </button>
                         )}
                         <button
+                          className="action-btn rename-btn"
+                          onClick={() => openRenameDialog(file.Key)}
+                          title="重命名"
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button
                           className="action-btn copy-btn"
                           onClick={() => getFileUrl(file.Key)}
                           title="复制 URL"
@@ -627,6 +692,59 @@ const R2FileManager = () => {
                 ) : previewFile?.type === 'text' ? (
                   <pre className="preview-code">{previewFile.content}</pre>
                 ) : null}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 重命名对话框 */}
+        {showRenameDialog && (
+          <div className="settings-overlay" onClick={() => setShowRenameDialog(false)}>
+            <div className="settings-dialog rename-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="settings-header">
+                <h2>重命名文件</h2>
+                <button
+                  className="btn-close"
+                  onClick={() => setShowRenameDialog(false)}
+                >
+                  <Icon name="close" size={20} />
+                </button>
+              </div>
+              <div className="settings-content">
+                <div className="form-group">
+                  <label>原文件名</label>
+                  <input
+                    type="text"
+                    value={renamingFile.includes('/') ? renamingFile.substring(renamingFile.lastIndexOf('/') + 1) : renamingFile}
+                    disabled
+                    className="disabled-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>新文件名</label>
+                  <input
+                    type="text"
+                    value={newFileName}
+                    onChange={(e) => setNewFileName(e.target.value)}
+                    placeholder="输入新文件名"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="settings-footer">
+                <button
+                  className="btn"
+                  onClick={() => setShowRenameDialog(false)}
+                >
+                  取消
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={renameFile}
+                  disabled={loading}
+                >
+                  {loading ? '重命名中...' : '确认重命名'}
+                </button>
               </div>
             </div>
           </div>

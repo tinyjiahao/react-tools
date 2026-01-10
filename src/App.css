@@ -549,6 +549,20 @@ body {
   border-color: var(--cf-orange);
 }
 
+/* 禁用输入框样式 */
+.disabled-input {
+  background: #f5f5f5 !important;
+  color: #9e9e9e !important;
+  cursor: not-allowed;
+}
+
+/* 输入提示文字 */
+.input-hint {
+  font-size: 12px;
+  color: #757575;
+  margin-top: 2px;
+}
+
 /* 配置状态指示 */
 .config-status {
   display: inline-flex;
@@ -990,6 +1004,7 @@ body {
   gap: 8px;
   font-size: 14px;
   color: #c62828;
+  z-index: 1001;
 }
 
 .error-icon {
@@ -1006,6 +1021,7 @@ body {
   gap: 8px;
   font-size: 14px;
   color: #ef6c00;
+  z-index: 1001;
 }
 
 .warning-icon {
@@ -1959,6 +1975,15 @@ body {
   background: #ffebee;
 }
 
+.rename-btn {
+  color: #1976d2;
+}
+
+.rename-btn:hover {
+  color: #1565c0;
+  background: #e3f2fd;
+}
+
 .operation-tag {
   display: inline-block;
   padding: 2px 6px;
@@ -2089,9 +2114,10 @@ body {
 }
 
 .App.layout-left .header-actions {
-  flex-direction: column;
+  flex-direction: row;
   gap: 10px;
   width: 100%;
+  justify-content: center;
 }
 
 .App.layout-left .current-tool-name {
@@ -2573,4 +2599,428 @@ body {
   border-radius: 4px;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
   font-size: 12px;
+}
+
+/* MarkdownViewer 组件样式 */
+.markdown-viewer-container {
+  display: flex;
+  height: calc(100vh - 160px);
+  gap: 20px;
+  overflow: hidden;
+}
+
+.markdown-sidebar {
+  width: 350px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #424242;
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.upload-file-item {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.upload-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.upload-file-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #424242;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-file-size {
+  font-size: 12px;
+  color: #757575;
+}
+
+.progress-bar-small {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill-small {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cf-orange), var(--cf-orange-dark));
+  transition: width 0.3s ease;
+}
+
+.upload-file-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.file-list-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #9e9e9e;
+  margin-top: 8px;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.file-item:hover {
+  background-color: #fafafa;
+}
+
+.file-item.active {
+  background-color: var(--cf-orange-light);
+  border-left: 3px solid var(--cf-orange);
+}
+
+.file-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.file-item-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.file-item .file-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #424242;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-item .file-meta {
+  font-size: 12px;
+  color: #757575;
+  margin-top: 2px;
+}
+
+.file-item-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.file-item:hover .file-item-actions {
+  opacity: 1;
+}
+
+.file-item .action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #616161;
+}
+
+.file-item .action-btn:hover {
+  background: var(--cf-orange);
+  color: #ffffff;
+}
+
+.file-item .download-btn:hover {
+  background: #43a047;
+}
+
+.file-item .delete-btn:hover {
+  background: #c62828;
+}
+
+.markdown-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.preview-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.preview-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #424242;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #333;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #424242;
+}
+
+.markdown-content h1 {
+  font-size: 2em;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 6px;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+}
+
+.markdown-content p {
+  margin-bottom: 16px;
+}
+
+.markdown-content a {
+  color: var(--cf-blue);
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-bottom: 16px;
+  padding-left: 2em;
+}
+
+.markdown-content li {
+  margin-bottom: 4px;
+}
+
+.markdown-content code {
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background: #263238;
+  color: #aed581;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid var(--cf-orange);
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #616161;
+  font-style: italic;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+  border: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-content table th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.markdown-content table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 16px 0;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 24px 0;
+}
+
+.markdown-content input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.preview-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #757575;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top-color: var(--cf-orange);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.preview-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9e9e9e;
+  text-align: center;
+}
+
+.preview-empty h3 {
+  margin: 16px 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #616161;
+}
+
+.preview-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .markdown-viewer-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .markdown-sidebar {
+    width: 100%;
+    height: 300px;
+  }
+
+  .markdown-preview {
+    min-height: 400px;
+  }
+
+  .markdown-content {
+    padding: 20px;
+  }
 }

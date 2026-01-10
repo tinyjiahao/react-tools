@@ -7,11 +7,12 @@ import UrlEncoder from './components/UrlEncoder';
 import ByteConverter from './components/ByteConverter';
 import Base64Encoder from './components/Base64Encoder';
 import R2FileManager from './components/R2FileManager';
+import MarkdownViewer from './components/MarkdownViewer';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer';
 
 // 定义工具分类
 interface ToolCategory {
@@ -53,7 +54,8 @@ const toolCategories: ToolCategory[] = [
     name: '存储工具',
     icon: 'cloud',
     tools: [
-      { id: 'r2-manager', name: 'R2文件管理', description: 'Cloudflare R2存储文件管理' }
+      { id: 'r2-manager', name: 'R2文件管理', description: 'Cloudflare R2存储文件管理' },
+      { id: 'markdown-viewer', name: 'Markdown预览', description: 'Markdown在线预览与管理' }
     ]
   }
 ];
@@ -66,7 +68,8 @@ const toolIdToParam: Record<ToolType, string> = {
   'url-encoder': 'url-encoder',
   'byte-converter': 'byte-converter',
   'base64': 'base64',
-  'r2-manager': 'r2-manager'
+  'r2-manager': 'r2-manager',
+  'markdown-viewer': 'markdown-viewer'
 };
 
 // URL参数到工具ID的映射
@@ -77,7 +80,8 @@ const paramToToolId: Record<string, ToolType> = {
   'url-encoder': 'url-encoder',
   'byte-converter': 'byte-converter',
   'base64': 'base64',
-  'r2-manager': 'r2-manager'
+  'r2-manager': 'r2-manager',
+  'markdown-viewer': 'markdown-viewer'
 };
 
 function App() {
@@ -193,16 +197,6 @@ function App() {
     updateUrl(toolId);
   };
 
-  const getCurrentTool = () => {
-    for (const category of toolCategories) {
-      const tool = category.tools.find(t => t.id === activeTool);
-      if (tool) return tool;
-    }
-    return { id: activeTool, name: 'JSON格式化', description: 'JSON数据格式化和验证' };
-  };
-
-  const currentTool = getCurrentTool();
-
   return (
     <div className={`App ${layoutMode === 'left' ? 'layout-left' : ''}`}>
       <header className="App-header">
@@ -241,7 +235,6 @@ function App() {
                         >
                           <div className="dropdown-item-content">
                             <span className="dropdown-item-name">{tool.name}</span>
-                            <span className="dropdown-item-desc">{tool.description}</span>
                           </div>
                         </button>
                       ))}
@@ -267,7 +260,6 @@ function App() {
               >
                 <Icon name="gear" size={20} />
               </button>
-              <span className="current-tool-name">{currentTool.name}</span>
             </div>
           </div>
         </div>
@@ -281,6 +273,7 @@ function App() {
           {activeTool === 'byte-converter' && <ByteConverter />}
           {activeTool === 'base64' && <Base64Encoder />}
           {activeTool === 'r2-manager' && <R2FileManager />}
+          {activeTool === 'markdown-viewer' && <MarkdownViewer />}
         </div>
       </main>
 
