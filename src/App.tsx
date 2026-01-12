@@ -150,8 +150,6 @@ function App() {
   // 更新URL路径
   const updateUrl = (toolId: ToolType) => {
     const path = toolIdToPath[toolId];
-    const url = new URL(window.location.href);
-    // 保留查询参数和其他设置，只修改路径
     window.history.replaceState({}, '', `/${path}`);
   };
 
