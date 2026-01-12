@@ -64,7 +64,7 @@ const R2ImageManager = () => {
   }, []);
 
   // 列出文件
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   const listFiles = useCallback(async () => {
     const r2_image_config = localStorage.getItem('r2_image_config');
     if (!r2_image_config) {
@@ -96,9 +96,10 @@ const R2ImageManager = () => {
       setLoading(false);
     }
   }, [callWorkerApi]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // 加载配置
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     const r2_image_config = localStorage.getItem('r2_image_config');
     if (r2_image_config) {
@@ -151,6 +152,7 @@ const R2ImageManager = () => {
       setError('未配置图片存储信息，请点击设置按钮进行配置');
     }
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // 上传文件
   const uploadToR2 = async () => {
