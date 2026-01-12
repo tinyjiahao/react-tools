@@ -3613,3 +3613,48 @@ body {
     right: 16px;
   }
 }
+
+/* 确认对话框 */
+.confirm-dialog {
+  max-width: 400px;
+}
+
+.confirm-message {
+  text-align: center;
+  padding: 20px;
+}
+
+.confirm-icon {
+  color: var(--cf-orange);
+  margin-bottom: 16px;
+}
+
+.confirm-message p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.confirm-message p:first-of-type {
+  font-size: 16px;
+  font-weight: 500;
+  color: #212121;
+}
+
+.confirm-hint {
+  color: #9e9e9e !important;
+  font-size: 12px !important;
+}
+
+.btn-danger {
+  background: #d32f2f;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #b71c1c;
+}
+
+.btn-danger:disabled {
+  background: #ffcdd2;
+  cursor: not-allowed;
+}

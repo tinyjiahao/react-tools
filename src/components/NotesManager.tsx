@@ -39,6 +39,8 @@ const NotesManager = () => {
   const [saving, setSaving] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [settingsConfig, setSettingsConfig] = useState<Config>({ workerUrl: '', apiToken: '' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
 
   // 调用 Workers API
@@ -238,26 +240,36 @@ const NotesManager = () => {
     setShowToast(true);
   };
 
-  // 删除笔记
-  const deleteNote = async (noteId: string) => {
-    if (!window.confirm('确定要删除这条笔记吗？')) return;
+  // 确认删除笔记
+  const confirmDelete = (noteId: string) => {
+    setDeletingNoteId(noteId);
+    setShowDeleteConfirm(true);
+  };
+
+  // 执行删除笔记
+  const performDelete = async () => {
+    if (!deletingNoteId) return;
 
     const r2_config = localStorage.getItem('r2_config');
     if (!r2_config) {
       setError('未配置 R2 存储信息');
+      setShowDeleteConfirm(false);
       return;
     }
 
     const currentConfig = JSON.parse(r2_config) as Config;
-    if (!currentConfig.workerUrl) return;
+    if (!currentConfig.workerUrl) {
+      setShowDeleteConfirm(false);
+      return;
+    }
 
     setLoading(true);
     setError('');
     try {
-      await callWorkerApi('delete', currentConfig, { key: `notes/${noteId}.json` });
+      await callWorkerApi('delete', currentConfig, { key: `notes/${deletingNoteId}.json` });
 
-      setNotes(prev => prev.filter(n => n.id !== noteId));
-      if (selectedNote?.id === noteId) {
+      setNotes(prev => prev.filter(n => n.id !== deletingNoteId));
+      if (selectedNote?.id === deletingNoteId) {
         setSelectedNote(null);
       }
 
@@ -267,6 +279,8 @@ const NotesManager = () => {
       setError(`删除失败: ${(err as Error).message}`);
     } finally {
       setLoading(false);
+      setShowDeleteConfirm(false);
+      setDeletingNoteId(null);
     }
   };
 
@@ -427,7 +441,7 @@ const NotesManager = () => {
                       className="action-btn delete-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteNote(note.id);
+                        confirmDelete(note.id);
                       }}
                       title="删除"
                     >
@@ -549,6 +563,39 @@ const NotesManager = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除确认对话框 */}
+      {showDeleteConfirm && (
+        <div className="settings-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="settings-dialog confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-header">
+              <h2>确认删除</h2>
+            </div>
+            <div className="settings-content">
+              <div className="confirm-message">
+                <Icon name="warning" size={48} className="confirm-icon" />
+                <p>确定要删除这条笔记吗？</p>
+                <p className="confirm-hint">此操作无法撤销</p>
+              </div>
+            </div>
+            <div className="settings-footer">
+              <button
+                className="btn"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={performDelete}
+                disabled={loading}
+              >
+                {loading ? '删除中...' : '确认删除'}
+              </button>
             </div>
           </div>
         </div>
