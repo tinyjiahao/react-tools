@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
-import 'highlight.js/styles/github-dark.css';
 
 interface FileItem {
   Key: string;
@@ -481,20 +477,12 @@ const NotesManager = () => {
               </div>
               <div className="editor-content">
                 <textarea
-                  className="note-textarea"
+                  className="note-textarea-full"
                   value={selectedNote.content}
                   onChange={(e) => setSelectedNote({ ...selectedNote, content: e.target.value })}
                   onPaste={handlePaste}
                   placeholder="开始输入笔记内容... (支持粘贴图片)"
                 />
-                <div className="note-preview">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight]}
-                  >
-                    {selectedNote.content || '*开始编写笔记...*'}
-                  </ReactMarkdown>
-                </div>
               </div>
               <div className="editor-footer">
                 <span className="note-meta-info">
