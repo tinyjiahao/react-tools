@@ -468,12 +468,24 @@ const NotesManager = () => {
                   onChange={(e) => setSelectedNote({ ...selectedNote, title: e.target.value })}
                   placeholder="笔记标题"
                 />
-                <button
-                  className="btn-close"
-                  onClick={() => setSelectedNote(null)}
-                >
-                  <Icon name="close" size={20} />
-                </button>
+                <div className="editor-header-actions">
+                  <button
+                    className="btn btn-primary btn-small"
+                    onClick={() => saveNote(selectedNote)}
+                    disabled={saving}
+                    title="保存笔记"
+                  >
+                    <Icon name="save" size={14} />
+                    {saving ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    className="btn-close"
+                    onClick={() => setSelectedNote(null)}
+                    title="关闭"
+                  >
+                    <Icon name="close" size={20} />
+                  </button>
+                </div>
               </div>
               <div className="editor-content">
                 <textarea
