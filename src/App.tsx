@@ -8,11 +8,12 @@ import ByteConverter from './components/ByteConverter';
 import Base64Encoder from './components/Base64Encoder';
 import R2FileManager from './components/R2FileManager';
 import MarkdownViewer from './components/MarkdownViewer';
+import R2ImageManager from './components/R2ImageManager';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager';
 
 // 定义工具分类
 interface ToolCategory {
@@ -55,7 +56,8 @@ const toolCategories: ToolCategory[] = [
     icon: 'cloud',
     tools: [
       { id: 'r2-manager', name: 'R2文件管理', description: 'Cloudflare R2存储文件管理' },
-      { id: 'markdown-viewer', name: 'Markdown预览', description: 'Markdown在线预览与管理' }
+      { id: 'markdown-viewer', name: 'Markdown预览', description: 'Markdown在线预览与管理' },
+      { id: 'r2-image-manager', name: 'R2图片管理', description: 'Cloudflare R2图片存储管理' }
     ]
   }
 ];
@@ -69,7 +71,8 @@ const toolIdToParam: Record<ToolType, string> = {
   'byte-converter': 'byte-converter',
   'base64': 'base64',
   'r2-manager': 'r2-manager',
-  'markdown-viewer': 'markdown-viewer'
+  'markdown-viewer': 'markdown-viewer',
+  'r2-image-manager': 'r2-image-manager'
 };
 
 // URL参数到工具ID的映射
@@ -81,7 +84,8 @@ const paramToToolId: Record<string, ToolType> = {
   'byte-converter': 'byte-converter',
   'base64': 'base64',
   'r2-manager': 'r2-manager',
-  'markdown-viewer': 'markdown-viewer'
+  'markdown-viewer': 'markdown-viewer',
+  'r2-image-manager': 'r2-image-manager'
 };
 
 function App() {
@@ -274,6 +278,7 @@ function App() {
           {activeTool === 'base64' && <Base64Encoder />}
           {activeTool === 'r2-manager' && <R2FileManager />}
           {activeTool === 'markdown-viewer' && <MarkdownViewer />}
+          {activeTool === 'r2-image-manager' && <R2ImageManager />}
         </div>
       </main>
 

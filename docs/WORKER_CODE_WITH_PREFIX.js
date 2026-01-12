@@ -24,17 +24,67 @@ export default {
       'Content-Type': 'application/json',
     };
 
-    // 验证 Token（可选）
-    const token = url.searchParams.get('authorization') ||
-                  request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (env.API_TOKEN && token !== env.API_TOKEN) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: corsHeaders
-      });
-    }
-
     try {
+      // ==================== 文件直接访问路径（图片可跳过token验证）====================
+      // 必须在全局token验证之前处理，以支持图片文件公开访问
+      if (url.pathname.startsWith('/file/')) {
+        const key = decodeURIComponent(url.pathname.substring(6)); // 去掉 '/file/' 前缀
+
+        // 图片文件扩展名列表
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+        const isImageFile = imageExtensions.some(ext => key.toLowerCase().endsWith(ext));
+
+        // 非图片文件需要验证 Token
+        if (!isImageFile) {
+          const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+          if (env.API_TOKEN && token !== env.API_TOKEN) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+              status: 401,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+              }
+            });
+          }
+        }
+
+        const object = await env.R2_BUCKET.get(key);
+
+        if (!object) {
+          return new Response('File not found', {
+            status: 404,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            }
+          });
+        }
+
+        const headers = new Headers();
+        object.writeHttpMetadata(headers);
+        headers.set('etag', object.httpEtag);
+        headers.set('Cache-Control', 'public, max-age=31536000'); // 缓存 1 年
+        headers.set('Access-Control-Allow-Origin', '*'); // 添加 CORS 头
+
+        // 设置 Content-Disposition：图片文件inline展示，其他文件下载
+        const encodedFilename = encodeURIComponent(key);
+        const dispositionType = isImageFile ? 'inline' : 'attachment';
+        headers.set('Content-Disposition', `${dispositionType}; filename="${encodedFilename}"`);
+
+        return new Response(object.body, { headers });
+      }
+
+      // ==================== 全局 Token 验证 ====================
+      // 验证 Token（可选）- 对所有其他操作生效
+      const token = url.searchParams.get('authorization') ||
+                    request.headers.get('Authorization')?.replace('Bearer ', '');
+      if (env.API_TOKEN && token !== env.API_TOKEN) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: corsHeaders
+        });
+      }
+
+      // ==================== API 操作 ====================
       // 列出文件 - 支持目录前缀过滤
       if (action === 'list') {
         const body = await request.json().catch(() => ({}));
@@ -84,51 +134,13 @@ export default {
         }, { headers: corsHeaders });
       }
 
-      // 直接访问文件 (通过 Worker 代理)
-      if (url.pathname.startsWith('/file/')) {
-        // 验证 Token (从 Authorization header 获取)
-        const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-        if (env.API_TOKEN && token !== env.API_TOKEN) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            }
-          });
-        }
-
-        const key = decodeURIComponent(url.pathname.substring(6)); // 去掉 '/file/' 前缀
-        const object = await env.R2_BUCKET.get(key);
-
-        if (!object) {
-          return new Response('File not found', {
-            status: 404,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          });
-        }
-
-        const headers = new Headers();
-        object.writeHttpMetadata(headers);
-        headers.set('etag', object.httpEtag);
-        headers.set('Cache-Control', 'public, max-age=31536000'); // 缓存 1 年
-        headers.set('Access-Control-Allow-Origin', '*'); // 添加 CORS 头
-
-        // 设置 Content-Disposition 以便浏览器正确处理文件名
-        const encodedFilename = encodeURIComponent(key);
-        headers.set('Content-Disposition', `attachment; filename="${encodedFilename}"`);
-
-        return new Response(object.body, { headers });
-      }
-
       // 无效的操作
       return new Response(JSON.stringify({
         error: 'Invalid action',
         availableActions: ['list', 'upload', 'delete'],
-        note: '文件下载直接访问 /file/{key} 路径，需在 Authorization header 中携带 token',
-        newFeature: 'list 操作支持 prefix 参数指定目录，如 { prefix: "markdown_file/" }'
+        note: '文件下载直接访问 /file/{key} 路径，非图片文件需在 Authorization header 中携带 token（图片文件可跳过验证）',
+        newFeature: 'list 操作支持 prefix 参数指定目录，如 { prefix: "markdown_file/" }',
+        imageExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico']
       }), {
         status: 400,
         headers: corsHeaders,
