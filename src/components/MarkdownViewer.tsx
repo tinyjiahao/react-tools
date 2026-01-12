@@ -545,7 +545,7 @@ const MarkdownViewer = () => {
                     <div className="file-item-main">
                       <Icon name="file" size={18} className="file-icon" />
                       <div className="file-item-info">
-                        <span className="file-name" title={file.Key}>{file.Key}</span>
+                        <span className="file-name" title={file.Key}>{file.Key.replace(/^markdown_file[/\\]/, '')}</span>
                         <span className="file-meta">
                           {formatSize(file.Size)} · {formatDate(file.LastModified)}
                         </span>
@@ -600,7 +600,7 @@ const MarkdownViewer = () => {
           ) : selectedFile ? (
             <>
               <div className="preview-header">
-                <h3>{selectedFile}</h3>
+                <h3>{selectedFile.replace(/^markdown_file[/\\]/, '')}</h3>
               </div>
               <div className="markdown-content">
                 <ReactMarkdown
