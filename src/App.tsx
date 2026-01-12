@@ -62,8 +62,8 @@ const toolCategories: ToolCategory[] = [
   }
 ];
 
-// 工具ID到URL参数的映射
-const toolIdToParam: Record<ToolType, string> = {
+// 工具ID到URL路径的映射
+const toolIdToPath: Record<ToolType, string> = {
   'json': 'json',
   'diff': 'diff',
   'qr': 'qr',
@@ -75,8 +75,8 @@ const toolIdToParam: Record<ToolType, string> = {
   'r2-image-manager': 'r2-image-manager'
 };
 
-// URL参数到工具ID的映射
-const paramToToolId: Record<string, ToolType> = {
+// URL路径到工具ID的映射
+const pathToToolId: Record<string, ToolType> = {
   'json': 'json',
   'diff': 'diff',
   'qr': 'qr',
@@ -108,13 +108,12 @@ function App() {
     localStorage.setItem('layoutMode', layoutMode);
   }, [layoutMode]);
 
-  // 页面加载时解析URL参数
+  // 页面加载时解析URL路径
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabId = urlParams.get('tabid');
+    const path = window.location.pathname.substring(1); // 去掉开头的 '/'
 
-    if (tabId && paramToToolId[tabId]) {
-      const toolId = paramToToolId[tabId];
+    if (path && pathToToolId[path]) {
+      const toolId = pathToToolId[path];
       setActiveTool(toolId);
 
       // 设置对应的分类
@@ -134,7 +133,7 @@ function App() {
       setShowDropdown([]); // 顶部模式下默认收起所有
     } else {
       // 左侧模式下，确保当前激活工具所在的分类是展开的
-      const currentCategory = toolCategories.find(c => 
+      const currentCategory = toolCategories.find(c =>
         c.tools.some(t => t.id === activeTool)
       );
       if (currentCategory) {
@@ -148,12 +147,12 @@ function App() {
     }
   }, [layoutMode, activeTool]);
 
-  // 更新URL参数
+  // 更新URL路径
   const updateUrl = (toolId: ToolType) => {
-    const param = toolIdToParam[toolId];
+    const path = toolIdToPath[toolId];
     const url = new URL(window.location.href);
-    url.searchParams.set('tabid', param);
-    window.history.replaceState({}, '', url.toString());
+    // 保留查询参数和其他设置，只修改路径
+    window.history.replaceState({}, '', `/${path}`);
   };
 
   const handleCategoryClick = (categoryName: string) => {
