@@ -1,5 +1,8 @@
-// Cloudflare Worker 代码 - 支持目录前缀过滤和文件重命名
+// Cloudflare Worker 代码 - R2 文件管理
 // 将此代码复制到 Cloudflare Worker 的编辑器中
+// 需要在 Worker 的环境变量中配置：
+//   - R2_BUCKET: R2 存储桶绑定
+//   - API_TOKEN: 可选的访问令牌
 
 export default {
   async fetch(request, env, ctx) {
@@ -30,6 +33,8 @@ export default {
       if (url.pathname.startsWith('/file/')) {
         const key = decodeURIComponent(url.pathname.substring(6)); // 去掉 '/file/' 前缀
 
+        console.log(`File access request - key: ${key}, pathname: ${url.pathname}`);
+
         // 图片文件扩展名列表
         const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
         const isImageFile = imageExtensions.some(ext => key.toLowerCase().endsWith(ext));
@@ -37,6 +42,7 @@ export default {
         // 非图片文件需要验证 Token
         if (!isImageFile) {
           const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+          console.log(`Token check - env.API_TOKEN: ${env.API_TOKEN ? 'set' : 'not set'}, token: ${token ? 'provided' : 'not provided'}`);
           if (env.API_TOKEN && token !== env.API_TOKEN) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
               status: 401,
@@ -51,9 +57,10 @@ export default {
         const object = await env.R2_BUCKET.get(key);
 
         if (!object) {
-          return new Response('File not found', {
+          return new Response(JSON.stringify({ error: 'File not found', key }), {
             status: 404,
             headers: {
+              'Content-Type': 'application/json',
               'Access-Control-Allow-Origin': '*',
             }
           });
@@ -70,6 +77,7 @@ export default {
         const dispositionType = isImageFile ? 'inline' : 'attachment';
         headers.set('Content-Disposition', `${dispositionType}; filename="${encodedFilename}"`);
 
+        console.log(`File served successfully - key: ${key}, size: ${object.size}`);
         return new Response(object.body, { headers });
       }
 
@@ -85,6 +93,7 @@ export default {
       }
 
       // ==================== API 操作 ====================
+
       // 列出文件 - 支持目录前缀过滤
       if (action === 'list') {
         const body = await request.json().catch(() => ({}));
@@ -112,13 +121,23 @@ export default {
           });
         }
 
-        await env.R2_BUCKET.put(file.name, file.stream(), {
+        // 记录文件信息用于调试
+        console.log(`Upload request - file.name: ${file.name}, file.type: ${file.type}, file.size: ${file.size}`);
+
+        // 将文件内容读取为 ArrayBuffer，确保完整上传
+        const fileContent = await file.arrayBuffer();
+        console.log(`File content read successfully, size: ${fileContent.byteLength} bytes`);
+
+        await env.R2_BUCKET.put(file.name, fileContent, {
           httpMetadata: { contentType: file.type }
         });
+
+        console.log(`File uploaded successfully to R2: ${file.name}`);
 
         return Response.json({
           success: true,
           key: file.name,
+          size: fileContent.byteLength,
           message: 'File uploaded successfully'
         }, { headers: corsHeaders });
       }

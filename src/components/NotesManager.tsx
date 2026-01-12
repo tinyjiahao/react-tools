@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
 
@@ -23,8 +24,32 @@ interface Note {
   updatedAt: string;
 }
 
+// Monaco 编辑器主题选项
+type MonacoTheme = 'vs' | 'vs-dark' | 'hc-black';
+type MonacoLanguage = 'markdown' | 'javascript' | 'typescript' | 'python' | 'java' | 'cpp' | 'html' | 'css' | 'json' | 'xml' | 'sql' | 'yaml';
+
+const THEME_OPTIONS: { value: MonacoTheme; label: string }[] = [
+  { value: 'vs', label: '浅色' },
+  { value: 'vs-dark', label: '深色' },
+  { value: 'hc-black', label: '高对比度' }
+];
+
+const LANGUAGE_OPTIONS: { value: MonacoLanguage; label: string }[] = [
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'xml', label: 'XML' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'yaml', label: 'YAML' }
+];
+
 const NotesManager = () => {
-  const [config, setConfig] = useState<Config>({ workerUrl: '', apiToken: '' });
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,7 +62,15 @@ const NotesManager = () => {
   const [settingsConfig, setSettingsConfig] = useState<Config>({ workerUrl: '', apiToken: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [editorTheme, setEditorTheme] = useState<MonacoTheme>(() => {
+    return (localStorage.getItem('monaco_theme') as MonacoTheme) || 'vs';
+  });
+  const [editorLanguage, setEditorLanguage] = useState<MonacoLanguage>(() => {
+    return (localStorage.getItem('monaco_language') as MonacoLanguage) || 'markdown';
+  });
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
+  // 使用 ref 来跟踪当前笔记的最新内容，避免闭包中的旧值
+  const currentNoteRef = useRef<Note | null>(null);
 
   // 调用 Workers API
   const callWorkerApi = useCallback(async (action: string, currentConfig: Config, body?: any) => {
@@ -61,6 +94,44 @@ const NotesManager = () => {
     }
 
     return response.json();
+  }, []);
+
+  // 从 R2 加载单个笔记的完整内容
+  const loadNoteContent = useCallback(async (noteId: string): Promise<Note | null> => {
+    const r2_config = localStorage.getItem('r2_config');
+    if (!r2_config) return null;
+
+    const currentConfig = JSON.parse(r2_config) as Config;
+    if (!currentConfig.workerUrl) return null;
+
+    try {
+      const baseUrl = currentConfig.workerUrl.replace(/\/$/, '');
+      // 添加时间戳参数避免浏览器缓存
+      const fileUrl = `${baseUrl}/file/notes/${encodeURIComponent(noteId)}.json?_t=${Date.now()}`;
+
+      const headers: Record<string, string> = {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      };
+      if (currentConfig.apiToken) {
+        headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
+      }
+
+      const response = await fetch(fileUrl, {
+        headers,
+        cache: 'no-store'
+      });
+      if (response.ok) {
+        const noteData = await response.json();
+        return {
+          id: noteId,
+          ...noteData
+        };
+      }
+    } catch (e) {
+      console.error(`Failed to load note content for ${noteId}:`, e);
+    }
+    return null;
   }, []);
 
   // 加载笔记列表
@@ -92,14 +163,21 @@ const NotesManager = () => {
       for (const file of noteFiles) {
         try {
           const baseUrl = currentConfig.workerUrl.replace(/\/$/, '');
-          const fileUrl = `${baseUrl}/file/${encodeURIComponent(file.Key)}`;
+          // 添加时间戳参数避免浏览器缓存
+          const fileUrl = `${baseUrl}/file/${encodeURIComponent(file.Key)}?_t=${Date.now()}`;
 
-          const headers: Record<string, string> = {};
+          const headers: Record<string, string> = {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          };
           if (currentConfig.apiToken) {
             headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
           }
 
-          const response = await fetch(fileUrl, { headers });
+          const response = await fetch(fileUrl, {
+            headers,
+            cache: 'no-store'
+          });
           if (response.ok) {
             const noteData = await response.json();
             loadedNotes.push({
@@ -122,13 +200,13 @@ const NotesManager = () => {
   }, [callWorkerApi]);
 
   // 加载配置
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     const r2_config = localStorage.getItem('r2_config');
     if (r2_config) {
       try {
         const parsed = JSON.parse(r2_config);
         if (parsed.workerUrl) {
-          setConfig(parsed);
           setSettingsConfig(parsed);
           loadNotesList();
         } else {
@@ -141,7 +219,31 @@ const NotesManager = () => {
     } else {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
     }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  // 同步 ref 和 state
+  const updateSelectedNote = useCallback((note: Note | null | ((prev: Note | null) => Note | null)) => {
+    setSelectedNote(prev => {
+      const newNote = typeof note === 'function' ? (note as (prev: Note | null) => Note | null)(prev) : note;
+      currentNoteRef.current = newNote;
+      return newNote;
+    });
   }, []);
+
+  // 处理点击笔记 - 从 R2 加载最新内容
+  const handleNoteClick = useCallback(async (note: Note) => {
+    // 先用列表数据显示，避免等待
+    updateSelectedNote(note);
+
+    // 然后从 R2 加载最新内容
+    const latestNote = await loadNoteContent(note.id);
+    if (latestNote) {
+      updateSelectedNote(latestNote);
+      // 同时更新列表中的数据
+      setNotes(prev => prev.map(n => n.id === latestNote.id ? latestNote : n));
+    }
+  }, [loadNoteContent, updateSelectedNote]);
 
   // 自动保存笔记（防抖1秒）
   const saveNote = useCallback(async (note: Note) => {
@@ -162,9 +264,8 @@ const NotesManager = () => {
         updatedAt: new Date().toISOString()
       }, null, 2);
 
-      const blob = new Blob([content], { type: 'application/json' });
       const formData = new FormData();
-      formData.append('file', blob, fileName);
+      formData.append('file', new Blob([content], { type: 'application/json' }), fileName);
 
       const xhr = new XMLHttpRequest();
 
@@ -173,7 +274,8 @@ const NotesManager = () => {
           if (xhr.status === 200) {
             resolve();
           } else {
-            reject(new Error('保存失败'));
+            const responseText = xhr.responseText || '保存失败';
+            reject(new Error(`保存失败 (${xhr.status}): ${responseText}`));
           }
         });
 
@@ -189,6 +291,10 @@ const NotesManager = () => {
       setNotes(prev => prev.map(n =>
         n.id === note.id ? { ...n, updatedAt: new Date().toISOString() } : n
       ));
+
+      // 显示保存成功提示
+      setToastMessage('笔记已保存');
+      setShowToast(true);
     } catch (err) {
       console.error('保存笔记失败:', err);
       setError(`保存失败: ${(err as Error).message}`);
@@ -197,7 +303,7 @@ const NotesManager = () => {
     }
   }, []);
 
-  // 防抖自动保存
+  // 防抖自动保存 - 使用 ref 获取最新内容
   useEffect(() => {
     if (!selectedNote) return;
 
@@ -206,7 +312,11 @@ const NotesManager = () => {
     }
 
     autoSaveRef.current = setTimeout(() => {
-      saveNote(selectedNote);
+      // 使用 ref 中的最新数据，而不是闭包中的旧值
+      const latestNote = currentNoteRef.current;
+      if (latestNote) {
+        saveNote(latestNote);
+      }
     }, 1000);
 
     return () => {
@@ -228,7 +338,7 @@ const NotesManager = () => {
     };
 
     setNotes(prev => [newNote, ...prev]);
-    setSelectedNote(newNote);
+    updateSelectedNote(newNote);
 
     // 立即保存到 R2
     saveNote(newNote);
@@ -266,7 +376,7 @@ const NotesManager = () => {
 
       setNotes(prev => prev.filter(n => n.id !== deletingNoteId));
       if (selectedNote?.id === deletingNoteId) {
-        setSelectedNote(null);
+        updateSelectedNote(null);
       }
 
       setToastMessage('笔记已删除');
@@ -280,7 +390,8 @@ const NotesManager = () => {
     }
   };
 
-  // 处理图片粘贴上传
+  // 处理图片粘贴上传 (暂未使用，保留用于 Quill 自定义图片上传)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -325,7 +436,7 @@ const NotesManager = () => {
           const imageUrl = `${currentConfig.workerUrl.replace(/\/$/, '')}/file/${encodeURIComponent(fileName)}`;
           const imageMarkdown = `![${file.name}](${imageUrl})\n`;
 
-          setSelectedNote(prev => prev ? {
+          updateSelectedNote(prev => prev ? {
             ...prev,
             content: prev.content + imageMarkdown
           } : null);
@@ -364,25 +475,10 @@ const NotesManager = () => {
             <div className="sidebar-actions">
               <button
                 className="btn btn-primary"
-                onClick={createNote}
-                title="新建笔记"
-              >
-                <Icon name="plus" size={16} />
-                新建
-              </button>
-              <button
-                className="btn btn-primary"
                 onClick={() => loadNotesList()}
                 title="刷新列表"
               >
                 <Icon name="refresh" size={16} />
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowSettingsDialog(true)}
-                title="设置"
-              >
-                <Icon name="gear" size={16} />
               </button>
             </div>
           </div>
@@ -423,7 +519,7 @@ const NotesManager = () => {
                   <div
                     key={note.id}
                     className={`note-item ${selectedNote?.id === note.id ? 'active' : ''}`}
-                    onClick={() => setSelectedNote(note)}
+                    onClick={() => handleNoteClick(note)}
                   >
                     <div className="note-item-main">
                       <div className="note-item-info">
@@ -465,10 +561,18 @@ const NotesManager = () => {
                   type="text"
                   className="note-title-input"
                   value={selectedNote.title}
-                  onChange={(e) => setSelectedNote({ ...selectedNote, title: e.target.value })}
+                  onChange={(e) => updateSelectedNote({ ...selectedNote, title: e.target.value })}
                   placeholder="笔记标题"
                 />
                 <div className="editor-header-actions">
+                  <button
+                    className="btn btn-primary btn-small"
+                    onClick={createNote}
+                    title="新建笔记"
+                  >
+                    <Icon name="plus" size={14} />
+                    新建
+                  </button>
                   <button
                     className="btn btn-primary btn-small"
                     onClick={() => saveNote(selectedNote)}
@@ -479,27 +583,80 @@ const NotesManager = () => {
                     {saving ? '保存中...' : '保存'}
                   </button>
                   <button
+                    className="btn btn-secondary btn-small"
+                    onClick={() => setShowSettingsDialog(true)}
+                    title="设置"
+                  >
+                    <Icon name="gear" size={14} />
+                  </button>
+                  <button
                     className="btn-close"
-                    onClick={() => setSelectedNote(null)}
+                    onClick={() => updateSelectedNote(null)}
                     title="关闭"
                   >
                     <Icon name="close" size={20} />
                   </button>
                 </div>
               </div>
-              <div className="editor-content">
-                <textarea
-                  className="note-textarea-full"
-                  value={selectedNote.content}
-                  onChange={(e) => setSelectedNote({ ...selectedNote, content: e.target.value })}
-                  onPaste={handlePaste}
-                  placeholder="开始输入笔记内容... (支持粘贴图片)"
-                />
+              <div className="editor-toolbar">
+                <div className="editor-toolbar-group">
+                  <label className="editor-toolbar-label">
+                    <Icon name="palette" size={14} />
+                    主题:
+                  </label>
+                  <select
+                    className="editor-toolbar-select"
+                    value={editorTheme}
+                    onChange={(e) => {
+                      const theme = e.target.value as MonacoTheme;
+                      setEditorTheme(theme);
+                      localStorage.setItem('monaco_theme', theme);
+                    }}
+                  >
+                    {THEME_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="editor-toolbar-group">
+                  <label className="editor-toolbar-label">
+                    <Icon name="code" size={14} />
+                    语言:
+                  </label>
+                  <select
+                    className="editor-toolbar-select"
+                    value={editorLanguage}
+                    onChange={(e) => {
+                      const lang = e.target.value as MonacoLanguage;
+                      setEditorLanguage(lang);
+                      localStorage.setItem('monaco_language', lang);
+                    }}
+                  >
+                    {LANGUAGE_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="editor-footer">
-                <span className="note-meta-info">
-                  创建于 {formatDate(selectedNote.createdAt)}
-                </span>
+              <div className="editor-content">
+                <Editor
+                  height="100%"
+                  language={editorLanguage}
+                  value={selectedNote.content}
+                  onChange={(value) => updateSelectedNote({ ...selectedNote, content: value || '' })}
+                  theme={editorTheme}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'on',
+                    automaticLayout: true,
+                    tabSize: 2,
+                    formatOnPaste: true,
+                    formatOnType: true,
+                  }}
+                />
               </div>
             </>
           ) : (
@@ -552,7 +709,6 @@ const NotesManager = () => {
                     className="btn btn-primary"
                     onClick={() => {
                       localStorage.setItem('r2_config', JSON.stringify(settingsConfig));
-                      setConfig(settingsConfig);
                       setShowSettingsDialog(false);
                       setToastMessage('配置已保存');
                       setShowToast(true);

@@ -584,16 +584,17 @@ const R2FileManager = () => {
               <p>暂无文件</p>
             </div>
           ) : (
-            <table className="file-table">
-              <thead>
-                <tr>
-                  <th>文件名</th>
-                  <th>大小</th>
-                  <th>修改时间</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div className="file-list-table-wrapper">
+              <table className="file-table">
+                <thead>
+                  <tr>
+                    <th>文件名</th>
+                    <th>大小</th>
+                    <th>修改时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {files.map((file) => (
                   <tr key={file.Key}>
                     <td>
@@ -649,6 +650,7 @@ const R2FileManager = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
