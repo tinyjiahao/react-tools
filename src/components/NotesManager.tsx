@@ -26,7 +26,7 @@ interface Note {
 
 // Monaco 编辑器主题选项
 type MonacoTheme = 'vs' | 'vs-dark' | 'hc-black';
-type MonacoLanguage = 'markdown' | 'javascript' | 'typescript' | 'python' | 'java' | 'cpp' | 'html' | 'css' | 'json' | 'xml' | 'sql' | 'yaml';
+type MonacoLanguage = 'plaintext' | 'markdown' | 'javascript' | 'typescript' | 'python' | 'java' | 'cpp' | 'html' | 'css' | 'json' | 'xml' | 'sql' | 'yaml';
 
 const THEME_OPTIONS: { value: MonacoTheme; label: string }[] = [
   { value: 'vs', label: '浅色' },
@@ -35,6 +35,7 @@ const THEME_OPTIONS: { value: MonacoTheme; label: string }[] = [
 ];
 
 const LANGUAGE_OPTIONS: { value: MonacoLanguage; label: string }[] = [
+  { value: 'plaintext', label: '纯文本' },
   { value: 'markdown', label: 'Markdown' },
   { value: 'javascript', label: 'JavaScript' },
   { value: 'typescript', label: 'TypeScript' },
@@ -643,6 +644,13 @@ const NotesManager = () => {
                   value={selectedNote.content}
                   onChange={(value) => updateSelectedNote({ ...selectedNote, content: value || '' })}
                   theme={editorTheme}
+                  onMount={(editor, monaco) => {
+                    // 添加 ESC 键监听来关闭搜索框
+                    editor.addCommand(monaco.KeyCode.Escape, () => {
+                      // 触发关闭搜索框的动作
+                      editor.trigger('keyboard', 'closeFindWidget', null);
+                    });
+                  }}
                   options={{
                     minimap: { enabled: false },
                     fontSize: 14,
@@ -661,7 +669,15 @@ const NotesManager = () => {
             <div className="editor-empty">
               <Icon name="file" size={64} className="empty-icon" />
               <h3>选择或创建笔记</h3>
-              <p>从左侧列表中选择笔记，或点击新建按钮创建新笔记</p>
+              <p>从左侧列表中选择笔记，或点击下方按钮创建新笔记</p>
+              <button
+                className="btn btn-primary"
+                onClick={createNote}
+                style={{ marginTop: '20px' }}
+              >
+                <Icon name="plus" size={16} />
+                新建笔记
+              </button>
             </div>
           )}
         </div>
