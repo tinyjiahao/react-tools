@@ -68,6 +68,7 @@ const NotesManager = () => {
   const [editorLanguage, setEditorLanguage] = useState<MonacoLanguage>(() => {
     return (localStorage.getItem('monaco_language') as MonacoLanguage) || 'markdown';
   });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   // 使用 ref 来跟踪当前笔记的最新内容，避免闭包中的旧值
   const currentNoteRef = useRef<Note | null>(null);
@@ -109,18 +110,12 @@ const NotesManager = () => {
       // 添加时间戳参数避免浏览器缓存
       const fileUrl = `${baseUrl}/file/notes/${encodeURIComponent(noteId)}.json?_t=${Date.now()}`;
 
-      const headers: Record<string, string> = {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      };
+      const headers: Record<string, string> = {};
       if (currentConfig.apiToken) {
         headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
       }
 
-      const response = await fetch(fileUrl, {
-        headers,
-        cache: 'no-store'
-      });
+      const response = await fetch(fileUrl, { headers });
       if (response.ok) {
         const noteData = await response.json();
         return {
@@ -166,18 +161,12 @@ const NotesManager = () => {
           // 添加时间戳参数避免浏览器缓存
           const fileUrl = `${baseUrl}/file/${encodeURIComponent(file.Key)}?_t=${Date.now()}`;
 
-          const headers: Record<string, string> = {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          };
+          const headers: Record<string, string> = {};
           if (currentConfig.apiToken) {
             headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
           }
 
-          const response = await fetch(fileUrl, {
-            headers,
-            cache: 'no-store'
-          });
+          const response = await fetch(fileUrl, { headers });
           if (response.ok) {
             const noteData = await response.json();
             loadedNotes.push({
@@ -317,7 +306,7 @@ const NotesManager = () => {
       if (latestNote) {
         saveNote(latestNote);
       }
-    }, 1000);
+    }, 10000); // 10秒后自动保存
 
     return () => {
       if (autoSaveRef.current) {
@@ -469,7 +458,7 @@ const NotesManager = () => {
     <div className="tool-container">
       <div className="notes-manager">
         {/* 左侧栏 - 笔记列表 */}
-        <div className="notes-sidebar">
+        <div className={`notes-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="sidebar-header">
             <h3>备忘录 ({notes.length})</h3>
             <div className="sidebar-actions">
@@ -547,7 +536,7 @@ const NotesManager = () => {
         </div>
 
         {/* 右侧栏 - 编辑器 */}
-        <div className="notes-editor">
+        <div className={`notes-editor ${sidebarCollapsed ? 'expanded' : ''}`}>
           {saving && (
             <div className="saving-indicator">
               <div className="loading-spinner-small"></div>
@@ -599,6 +588,15 @@ const NotesManager = () => {
                 </div>
               </div>
               <div className="editor-toolbar">
+                <div className="editor-toolbar-group">
+                  <button
+                    className="btn btn-secondary btn-small"
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    title={sidebarCollapsed ? "展开笔记列表" : "收起笔记列表"}
+                  >
+                    <Icon name={sidebarCollapsed ? "chevron-right" : "chevron-left"} size={14} />
+                  </button>
+                </div>
                 <div className="editor-toolbar-group">
                   <label className="editor-toolbar-label">
                     <Icon name="palette" size={14} />
