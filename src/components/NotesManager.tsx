@@ -69,10 +69,14 @@ const NotesManager = () => {
   const [editorLanguage, setEditorLanguage] = useState<MonacoLanguage>(() => {
     return (localStorage.getItem('monaco_language') as MonacoLanguage) || 'markdown';
   });
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('notes_sidebar_collapsed') === 'true';
+  });
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   // 使用 ref 来跟踪当前笔记的最新内容，避免闭包中的旧值
   const currentNoteRef = useRef<Note | null>(null);
+  // 存储原始笔记内容，用于比较是否有变化
+  const originalNoteRef = useRef<Note | null>(null);
 
   // 调用 Workers API
   const callWorkerApi = useCallback(async (action: string, currentConfig: Config, body?: any) => {
@@ -181,13 +185,29 @@ const NotesManager = () => {
       }
 
       setNotes(loadedNotes);
+
+      // 恢复上次选中的笔记
+      const savedSelectedId = localStorage.getItem('notes_selected_id');
+      if (savedSelectedId) {
+        const savedNote = loadedNotes.find(n => n.id === savedSelectedId);
+        if (savedNote) {
+          // 从 R2 加载最新内容
+          const latestNote = await loadNoteContent(savedNote.id);
+          if (latestNote) {
+            originalNoteRef.current = { ...latestNote };
+            updateSelectedNote(latestNote);
+          } else {
+            updateSelectedNote(savedNote);
+          }
+        }
+      }
     } catch (err) {
       console.error('加载笔记列表失败:', err);
       setError(`加载失败: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
-  }, [callWorkerApi]);
+  }, [callWorkerApi]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 加载配置
   /* eslint-disable react-hooks/exhaustive-deps */
@@ -212,11 +232,29 @@ const NotesManager = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  // 保存侧边栏收起状态到 localStorage
+  useEffect(() => {
+    localStorage.setItem('notes_sidebar_collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  // 保存当前选中的笔记 ID 到 localStorage
+  useEffect(() => {
+    if (selectedNote) {
+      localStorage.setItem('notes_selected_id', selectedNote.id);
+    } else {
+      localStorage.removeItem('notes_selected_id');
+    }
+  }, [selectedNote]);
+
   // 同步 ref 和 state
   const updateSelectedNote = useCallback((note: Note | null | ((prev: Note | null) => Note | null)) => {
     setSelectedNote(prev => {
       const newNote = typeof note === 'function' ? (note as (prev: Note | null) => Note | null)(prev) : note;
       currentNoteRef.current = newNote;
+      // 当设置新笔记（而非编辑更新）时，保存原始内容
+      if (newNote && typeof note !== 'function') {
+        originalNoteRef.current = { ...newNote };
+      }
       return newNote;
     });
   }, []);
@@ -229,6 +267,8 @@ const NotesManager = () => {
     // 然后从 R2 加载最新内容
     const latestNote = await loadNoteContent(note.id);
     if (latestNote) {
+      // 保存原始内容用于比较
+      originalNoteRef.current = { ...latestNote };
       updateSelectedNote(latestNote);
       // 同时更新列表中的数据
       setNotes(prev => prev.map(n => n.id === latestNote.id ? latestNote : n));
@@ -242,6 +282,17 @@ const NotesManager = () => {
 
     const currentConfig = JSON.parse(r2_config) as Config;
     if (!currentConfig.workerUrl) return;
+
+    // 检查内容是否有变化
+    const original = originalNoteRef.current;
+    if (original &&
+        original.id === note.id &&
+        original.title === note.title &&
+        original.content === note.content &&
+        JSON.stringify(original.tags) === JSON.stringify(note.tags)) {
+      // 内容没有变化，不保存
+      return;
+    }
 
     setSaving(true);
     try {
@@ -281,6 +332,9 @@ const NotesManager = () => {
       setNotes(prev => prev.map(n =>
         n.id === note.id ? { ...n, updatedAt: new Date().toISOString() } : n
       ));
+
+      // 保存成功后更新原始内容
+      originalNoteRef.current = { ...note, updatedAt: new Date().toISOString() };
 
       // 显示保存成功提示
       setToastMessage('笔记已保存');
@@ -328,6 +382,8 @@ const NotesManager = () => {
     };
 
     setNotes(prev => [newNote, ...prev]);
+    // 不设置原始内容，让新笔记能够正常保存
+    originalNoteRef.current = null;
     updateSelectedNote(newNote);
 
     // 立即保存到 R2
