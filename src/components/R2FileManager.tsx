@@ -221,7 +221,8 @@ const R2FileManager = () => {
       // 没有配置时显示提示
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDirectory]);
 
   // 当目录变化时重新加载文件列表
   useEffect(() => {
@@ -229,6 +230,7 @@ const R2FileManager = () => {
     if (config.workerUrl && currentDirectory !== undefined) {
       listFiles(currentDirectory);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDirectory]);
 
   // 上传文件
