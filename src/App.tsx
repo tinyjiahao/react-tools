@@ -10,11 +10,12 @@ import R2FileManager from './components/R2FileManager';
 import MarkdownViewer from './components/MarkdownViewer';
 import R2ImageManager from './components/R2ImageManager';
 import NotesManager from './components/NotesManager';
+import KnowledgeManager from './components/KnowledgeManager';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge';
 
 // 定义工具分类
 interface ToolCategory {
@@ -61,6 +62,13 @@ const toolCategories: ToolCategory[] = [
       { id: 'r2-image-manager', name: 'R2图片管理', description: 'Cloudflare R2图片存储管理' },
       { id: 'notes', name: '云端备忘录', description: '支持Markdown的云端备忘录' }
     ]
+  },
+  {
+    name: '知识库',
+    icon: 'book',
+    tools: [
+      { id: 'knowledge', name: '知识库', description: '富文本知识库内容查看' }
+    ]
   }
 ];
 
@@ -75,7 +83,8 @@ const toolIdToPath: Record<ToolType, string> = {
   'r2-manager': 'r2-manager',
   'markdown-viewer': 'markdown-viewer',
   'r2-image-manager': 'r2-image-manager',
-  'notes': 'notes'
+  'notes': 'notes',
+  'knowledge': 'knowledge'
 };
 
 // URL路径到工具ID的映射
@@ -89,7 +98,8 @@ const pathToToolId: Record<string, ToolType> = {
   'r2-manager': 'r2-manager',
   'markdown-viewer': 'markdown-viewer',
   'r2-image-manager': 'r2-image-manager',
-  'notes': 'notes'
+  'notes': 'notes',
+  'knowledge': 'knowledge'
 };
 
 function App() {
@@ -281,6 +291,7 @@ function App() {
           {activeTool === 'markdown-viewer' && <MarkdownViewer />}
           {activeTool === 'r2-image-manager' && <R2ImageManager />}
           {activeTool === 'notes' && <NotesManager />}
+          {activeTool === 'knowledge' && <KnowledgeManager />}
         </div>
       </main>
 

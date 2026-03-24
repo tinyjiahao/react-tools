@@ -9,6 +9,11 @@ interface FileItem {
   ETag?: string;
 }
 
+interface DirectoryItem {
+  name: string;
+  path: string;
+}
+
 interface Config {
   workerUrl: string;
   apiToken: string;
@@ -17,6 +22,7 @@ interface Config {
 const R2FileManager = () => {
   const [config, setConfig] = useState<Config>({ workerUrl: '', apiToken: '' });
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [directories, setDirectories] = useState<DirectoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -29,6 +35,12 @@ const R2FileManager = () => {
   const [renamingFile, setRenamingFile] = useState<string>('');
   const [newFileName, setNewFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const [uploadDirectory, setUploadDirectory] = useState('');
+  const [showDirInput, setShowDirInput] = useState(false);
+  const [currentDirectory, setCurrentDirectory] = useState('');
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   // 调用 Workers API
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -57,8 +69,7 @@ const R2FileManager = () => {
   }, [config.workerUrl, config.apiToken]);
 
   // 列出文件
-  const listFiles = useCallback(async (currentConfig = config) => {
-    console.log('currentConfig', currentConfig);
+  const listFiles = useCallback(async (directory: string = '', currentConfig = config) => {
     if (!currentConfig.workerUrl) {
       setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
       return;
@@ -66,19 +77,62 @@ const R2FileManager = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await callWorkerApi('list', undefined, currentConfig);
-      setFiles(result.files || []);
+      const prefix = directory ? (directory.endsWith('/') ? directory : `${directory}/`) : '';
+      const result = await callWorkerApi('list', { prefix }, currentConfig);
+
+      // 过滤出当前目录下的文件和子目录
+      const allFiles = result.files || [];
+      const currentFiles: FileItem[] = [];
+      const dirSet = new Set<string>();
+
+      allFiles.forEach((file: FileItem) => {
+        const key = file.Key;
+
+        // 跳过与当前目录前缀完全相同的 key（目录本身）
+        // 例如：在 "resume/" 目录下，跳过 key="resume" 或 key="resume/" 的项
+        if (key === prefix || key === prefix.replace(/\/$/, '') || key + '/' === prefix) {
+          return;
+        }
+
+        // 只处理以当前目录前缀开头的文件
+        if (prefix && !key.startsWith(prefix)) {
+          return;
+        }
+
+        // 计算相对路径
+        const relativePath = prefix ? key.substring(prefix.length) : key;
+        const firstSlashIndex = relativePath.indexOf('/');
+
+        if (firstSlashIndex === -1) {
+          // 当前目录下的文件
+          currentFiles.push(file);
+        } else {
+          // 子目录
+          const dirName = relativePath.substring(0, firstSlashIndex);
+          // 跳过空目录名和与当前目录同名的目录
+          if (dirName && dirName !== currentDirectory) {
+            dirSet.add(dirName);
+          }
+        }
+      });
+
+      setFiles(currentFiles);
+      setDirectories(
+        Array.from(dirSet).sort().map(name => ({
+          name,
+          path: prefix + name
+        }))
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [config, callWorkerApi]);
+  }, [config, callWorkerApi, currentDirectory]);
 
   // 加载配置
   useEffect(() => {
     const r2_config = localStorage.getItem('r2_config');
-    console.log('r2_config', r2_config);
     if (r2_config) {
       try {
         const parsed = JSON.parse(r2_config);
@@ -96,14 +150,55 @@ const R2FileManager = () => {
               if (parsed.apiToken) {
                 headers['Authorization'] = `Bearer ${parsed.apiToken}`;
               }
+
+              // 使用当前目录作为 prefix
+              const prefix = currentDirectory ? (currentDirectory.endsWith('/') ? currentDirectory : `${currentDirectory}/`) : '';
               const response = await fetch(`${parsed.workerUrl}?action=list`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({}),
+                body: JSON.stringify({ prefix }),
               });
+
               if (response.ok) {
                 const result = await response.json();
-                setFiles(result.files || []);
+                const allFiles = result.files || [];
+                const currentFiles: FileItem[] = [];
+                const dirSet = new Set<string>();
+
+                allFiles.forEach((file: FileItem) => {
+                  const key = file.Key;
+
+                  // 跳过与当前目录前缀完全相同的 key（目录本身）
+                  if (key === prefix || key === prefix.replace(/\/$/, '') || key + '/' === prefix) {
+                    return;
+                  }
+
+                  // 只处理以当前目录前缀开头的文件
+                  if (prefix && !key.startsWith(prefix)) {
+                    return;
+                  }
+
+                  const relativePath = prefix ? key.substring(prefix.length) : key;
+                  const firstSlashIndex = relativePath.indexOf('/');
+
+                  if (firstSlashIndex === -1) {
+                    currentFiles.push(file);
+                  } else {
+                    const dirName = relativePath.substring(0, firstSlashIndex);
+                    // 跳过空目录名和与当前目录同名的目录
+                    if (dirName && dirName !== currentDirectory) {
+                      dirSet.add(dirName);
+                    }
+                  }
+                });
+
+                setFiles(currentFiles);
+                setDirectories(
+                  Array.from(dirSet).sort().map(name => ({
+                    name,
+                    path: prefix + name
+                  }))
+                );
               } else {
                 const errorData = await response.json().catch(() => ({ error: response.statusText }));
                 setError(errorData.error || `加载失败 (${response.status})`);
@@ -128,6 +223,14 @@ const R2FileManager = () => {
     }
   }, []);
 
+  // 当目录变化时重新加载文件列表
+  useEffect(() => {
+    // 只在配置已加载且不是初始加载时执行
+    if (config.workerUrl && currentDirectory !== undefined) {
+      listFiles(currentDirectory);
+    }
+  }, [currentDirectory]);
+
   // 上传文件
   const uploadToR2 = async () => {
     if (!uploadFile) return;
@@ -143,6 +246,13 @@ const R2FileManager = () => {
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
+
+      // 构建完整路径（目录 + 文件名）
+      const directory = uploadDirectory.trim();
+      const fileName = uploadFile.name;
+      const fullPath = directory ? `${directory}/${fileName}` : fileName;
+
+      formData.append('path', fullPath);
 
       const xhr = new XMLHttpRequest();
 
@@ -160,7 +270,7 @@ const R2FileManager = () => {
           if (fileInputRef.current) {
             fileInputRef.current.value = '';
           }
-          listFiles();
+          listFiles(currentDirectory);
           setShowCopyToast(true);
         } else {
           try {
@@ -519,66 +629,163 @@ const R2FileManager = () => {
     }
   };
 
+  // 拖拽事件处理
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // 检查是否真正离开了拖放区域
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setUploadFile(file);
+      setError('');
+    }
+  };
+
+  // 点击上传区域触发文件选择
+  const handleUploadAreaClick = () => {
+    if (!uploadFile && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // 快速选择目录
+  const handleSelectDirectory = (dir: string) => {
+    setUploadDirectory(dir);
+    setShowDirInput(false);
+  };
+
+  // 进入目录
+  const enterDirectory = (dirPath: string) => {
+    setCurrentDirectory(dirPath);
+    setUploadDirectory(dirPath); // 同时更新上传目录
+    listFiles(dirPath);
+  };
+
+  // 返回上级目录
+  const goUpDirectory = () => {
+    if (!currentDirectory) return;
+    const lastSlashIndex = currentDirectory.lastIndexOf('/');
+    const parentDir = lastSlashIndex > 0 ? currentDirectory.substring(0, lastSlashIndex) : '';
+    setCurrentDirectory(parentDir);
+    setUploadDirectory(parentDir); // 同时更新上传目录
+    listFiles(parentDir);
+  };
+
+  // 获取面包屑路径
+  const getBreadcrumbs = () => {
+    if (!currentDirectory) return [{ name: '根目录', path: '' }];
+    const parts = currentDirectory.split('/');
+    const breadcrumbs = [{ name: '根目录', path: '' }];
+    let path = '';
+    parts.forEach((part, index) => {
+      path += (index > 0 ? '/' : '') + part;
+      breadcrumbs.push({ name: part, path });
+    });
+    return breadcrumbs;
+  };
+
+  // 获取唯一的目录列表
+  const getUniqueDirectories = (): string[] => {
+    const directories = new Set<string>();
+    files.forEach((file: FileItem) => {
+      const key = file.Key;
+      const lastSlashIndex = key.lastIndexOf('/');
+      if (lastSlashIndex > 0) {
+        const dir = key.substring(0, lastSlashIndex);
+        directories.add(dir);
+      }
+    });
+    return Array.from(directories).sort();
+  };
+
   return (
     <div className="tool-container">
       <h2>R2 文件管理工具</h2>
       <div className="tool-content">
-        {/* 上传区域 */}
-        <div className="upload-section">
-          <div className="upload-area">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-              className="file-input"
-            />
-            {uploadFile && (
-              <div className="selected-file">
-                <Icon name={getFileIconName(uploadFile.name)} size={18} />
-                <span>{uploadFile.name}</span>
-                <span className="file-size">({formatSize(uploadFile.size)})</span>
-                <button className="btn-close" onClick={() => {
-                  setUploadFile(null);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
-                }}>×</button>
-              </div>
-            )}
+        {/* 文件列表区域 */}
+        <div className="file-list-section">
+          {/* 文件列表头部 - 包含面包屑和操作按钮 */}
+          <div className="file-list-header">
+            <div className="file-list-title">
+              {/* 面包屑导航 */}
+              {currentDirectory || directories.length > 0 ? (
+                <div className="breadcrumb-list">
+                  {getBreadcrumbs().map((crumb, index) => (
+                    <React.Fragment key={crumb.path}>
+                      {index > 0 && <span className="breadcrumb-separator">/</span>}
+                      <button
+                        className="breadcrumb-item"
+                        onClick={() => enterDirectory(crumb.path)}
+                      >
+                        {crumb.name}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : (
+                <h3>根目录</h3>
+              )}
+              <span className="file-count"> ({files.length} 个文件{directories.length > 0 ? `, ${directories.length} 个目录` : ''})</span>
+            </div>
+            <div className="file-list-actions">
+              <button
+                className="btn btn-primary btn-small"
+                onClick={() => setShowUploadDialog(true)}
+                title="上传文件"
+              >
+                <Icon name="upload" size={14} />
+                上传文件
+              </button>
+              {currentDirectory && (
+                <button
+                  className="btn btn-secondary btn-small"
+                  onClick={goUpDirectory}
+                  title="返回上级目录"
+                >
+                  <Icon name="arrow-left" size={14} />
+                  上级
+                </button>
+              )}
+              <button className="btn btn-primary btn-small" onClick={() => listFiles(currentDirectory)}>
+                <Icon name="refresh" size={14} />
+                刷新
+              </button>
+            </div>
           </div>
-          {uploadFile && uploadProgress > 0 && (
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
-              <span className="progress-text">{uploadProgress}%</span>
+
+          {/* 错误提示 - 显示在文件列表区域 */}
+          {error && (
+            <div className="error-message">
+              <Icon name="warning" size={18} className="error-icon" />
+              {error}
             </div>
           )}
-          <button
-            className="btn btn-primary"
-            onClick={uploadToR2}
-            disabled={!uploadFile || loading}
-          >
-            {loading ? '上传中...' : '开始上传'}
-          </button>
-        </div>
 
-        {/* 错误提示 */}
-        {error && (
-          <div className="error-message">
-            <Icon name="warning" size={18} className="error-icon" />
-            {error}
-          </div>
-        )}
-
-        {/* 文件列表 */}
-        <div className="file-list-section">
-          <div className="file-list-header">
-            <h3>文件列表 ({files.length} 个文件)</h3>
-            <button className="btn btn-primary" onClick={() => listFiles()}>
-              <Icon name="refresh" size={16} />
-              刷新
-            </button>
-          </div>
-          {loading && files.length === 0 ? (
+          {loading && files.length === 0 && directories.length === 0 ? (
             <div className="loading-state">加载中...</div>
-          ) : files.length === 0 ? (
+          ) : files.length === 0 && directories.length === 0 ? (
             <div className="empty-state">
               <Icon name="box" size={64} className="empty-icon" />
               <p>暂无文件</p>
@@ -595,6 +802,34 @@ const R2FileManager = () => {
                   </tr>
                 </thead>
                 <tbody>
+                {/* 目录列表 */}
+                {directories.map((dir) => (
+                  <tr key={`dir-${dir.path}`} className="directory-row">
+                    <td>
+                      <div
+                        className="file-table-cell directory-cell"
+                        onClick={() => enterDirectory(dir.path)}
+                      >
+                        <Icon name="folder" size={18} className="file-icon directory-icon" />
+                        <span className="file-name directory-name">{dir.name}</span>
+                      </div>
+                    </td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>
+                      <div className="file-table-cell-actions">
+                        <button
+                          className="action-btn"
+                          onClick={() => enterDirectory(dir.path)}
+                          title="进入目录"
+                        >
+                          <Icon name="arrow-right" size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {/* 文件列表 */}
                 {files.map((file) => (
                   <tr key={file.Key}>
                     <td>
@@ -653,6 +888,138 @@ const R2FileManager = () => {
             </div>
           )}
         </div>
+
+        {/* 上传文件对话框 */}
+        {showUploadDialog && (
+          <div className="upload-dialog-overlay" onClick={() => setShowUploadDialog(false)}>
+            <div className="upload-dialog" onClick={(e) => e.stopPropagation()}>
+              <div className="upload-dialog-header">
+                <h3>上传文件</h3>
+                <button
+                  className="btn-close"
+                  onClick={() => setShowUploadDialog(false)}
+                >
+                  <Icon name="close" size={20} />
+                </button>
+              </div>
+
+              <div className="upload-dialog-content">
+                {/* 错误提示 */}
+                {error && (
+                  <div className="error-message">
+                    <Icon name="warning" size={18} className="error-icon" />
+                    {error}
+                  </div>
+                )}
+
+                {/* 目录选择 */}
+                <div className="directory-selector">
+                  <button
+                    className="btn btn-secondary btn-small"
+                    onClick={() => setShowDirInput(!showDirInput)}
+                  >
+                    <Icon name="folder" size={14} />
+                    {showDirInput ? '隐藏目录' : '指定目录'}
+                  </button>
+                  {showDirInput && (
+                    <div className="directory-input-wrapper">
+                      <input
+                        type="text"
+                        value={uploadDirectory}
+                        onChange={(e) => setUploadDirectory(e.target.value)}
+                        placeholder="例如: documents/images"
+                        className="directory-input"
+                      />
+                      <span className="directory-hint">输入目录路径（可选）</span>
+                      {getUniqueDirectories().length > 0 && (
+                        <div className="directory-quick-select">
+                          <span className="directory-hint">或选择现有目录:</span>
+                          <div className="directory-list">
+                            {getUniqueDirectories().map(dir => (
+                              <button
+                                key={dir}
+                                className="btn btn-directory btn-small"
+                                onClick={() => handleSelectDirectory(dir)}
+                              >
+                                <Icon name="folder" size={12} />
+                                {dir}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  ref={dropZoneRef}
+                  className={`upload-area ${isDragging ? 'dragging' : ''}`}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={handleUploadAreaClick}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    className="file-input"
+                  />
+                  {!uploadFile ? (
+                    <div className="upload-prompt">
+                      <Icon name="upload" size={48} className="upload-icon" />
+                      <p>拖拽文件到此处，或点击选择文件</p>
+                      {uploadDirectory && (
+                        <p className="directory-preview">
+                          将上传到: <strong>{uploadDirectory}</strong>
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="selected-file">
+                      <Icon name={getFileIconName(uploadFile.name)} size={18} />
+                      <div className="selected-file-info">
+                        <span className="selected-file-name">{uploadFile.name}</span>
+                        {uploadDirectory && (
+                          <span className="selected-file-path">→ {uploadDirectory}/</span>
+                        )}
+                        <span className="file-size">({formatSize(uploadFile.size)})</span>
+                      </div>
+                      <button className="btn-close" onClick={() => {
+                        setUploadFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}>×</button>
+                    </div>
+                  )}
+                </div>
+                {uploadFile && uploadProgress > 0 && (
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+                    <span className="progress-text">{uploadProgress}%</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="upload-dialog-footer">
+                <button
+                  className="btn"
+                  onClick={() => setShowUploadDialog(false)}
+                >
+                  取消
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={uploadToR2}
+                  disabled={!uploadFile || loading}
+                >
+                  {loading ? '上传中...' : '开始上传'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 文件预览对话框 */}
         {(previewLoading || previewFile) && (

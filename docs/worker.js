@@ -113,6 +113,10 @@ export default {
       if (action === 'upload' && request.method === 'POST') {
         const formData = await request.formData();
         const file = formData.get('file');
+        const path = formData.get('path'); // 获取路径参数（包含目录）
+
+        // 调试日志：检查所有 FormData 字段
+        console.log(`Upload request - file: ${file?.name || 'null'}, path param: ${path || 'null'}`);
 
         if (!file) {
           return new Response(JSON.stringify({ error: 'No file provided' }), {
@@ -121,22 +125,28 @@ export default {
           });
         }
 
+        // 使用 path 作为 R2 的 key（如果提供了 path），否则使用 file.name
+        // R2 不需要显式创建目录，上传带路径的 key 时会自动处理层次结构
+        const key = path || file.name;
+
         // 记录文件信息用于调试
-        console.log(`Upload request - file.name: ${file.name}, file.type: ${file.type}, file.size: ${file.size}`);
+        console.log(`Upload request details - file.name: ${file.name}, file.type: ${file.type}, file.size: ${file.size}`);
+        console.log(`Final key for R2: "${key}" (from ${path ? 'path param' : 'file.name'})`);
 
         // 将文件内容读取为 ArrayBuffer，确保完整上传
         const fileContent = await file.arrayBuffer();
         console.log(`File content read successfully, size: ${fileContent.byteLength} bytes`);
 
-        await env.R2_BUCKET.put(file.name, fileContent, {
+        await env.R2_BUCKET.put(key, fileContent, {
           httpMetadata: { contentType: file.type }
         });
 
-        console.log(`File uploaded successfully to R2: ${file.name}`);
+        console.log(`File uploaded successfully to R2: ${key}`);
 
         return Response.json({
           success: true,
-          key: file.name,
+          key: key,
+          path: path,
           size: fileContent.byteLength,
           message: 'File uploaded successfully'
         }, { headers: corsHeaders });
