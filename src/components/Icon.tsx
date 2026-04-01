@@ -263,6 +263,23 @@ const Icon: React.FC<IconProps> = ({ name, size = 18, className = '' }) => {
           <line x1="20" y1="3" x2="20" y2="19"/>
         </svg>
       )}
+      {name === 'history' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      )}
+      {name === 'clock' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      )}
+      {name === 'chevronUp' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+      )}
     </span>
   );
 };

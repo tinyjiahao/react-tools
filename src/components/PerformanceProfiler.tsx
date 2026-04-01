@@ -17,6 +17,15 @@ interface PerformanceData {
   startTime?: number;
 }
 
+// 历史记录类型
+interface HistoryRecord {
+  id: string;
+  timestamp: number;
+  data: PerformanceData;
+}
+
+const MAX_HISTORY_COUNT = 10;
+
 const PerformanceProfiler = () => {
   const [data, setData] = useState<PerformanceData | null>(null);
   const [error, setError] = useState('');
@@ -24,12 +33,143 @@ const PerformanceProfiler = () => {
   const [viewMode, setViewMode] = useState<'gantt' | 'timeline' | 'table'>('gantt');
   const [showDataDialog, setShowDataDialog] = useState(false);
   const [inputData, setInputData] = useState('');
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const historyDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 初始化时加载示例数据
+  // 初始化时从 localStorage 加载数据和历史记录
   useEffect(() => {
-    loadSampleData();
+    // 加载当前数据
+    const savedData = localStorage.getItem('performanceData');
+    if (savedData) {
+      try {
+        setData(JSON.parse(savedData));
+      } catch (e) {
+        console.error('Failed to load saved data:', e);
+      }
+    } else {
+      // 没有保存的数据时加载示例数据
+      setData(getSampleData());
+    }
+
+    // 加载历史记录
+    const savedHistory = localStorage.getItem('performanceHistory');
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        setHistory(parsed);
+        if (parsed.length > 0) {
+          setSelectedHistoryId(parsed[0].id);
+        }
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+    }
   }, []);
+
+  // 获取示例数据
+  const getSampleData = (): PerformanceData => {
+    return {
+      title: 'Web应用完整加载流程性能分析',
+      events: [
+        // 网络请求阶段
+        { name: 'DNS解析与TCP连接', start: 0, duration: 80, category: 'network' },
+        { name: 'TLS握手建立安全连接', start: 80, duration: 60, category: 'network' },
+        { name: 'HTTP请求发送头部信息', start: 140, duration: 40, category: 'network' },
+        { name: '服务器响应等待时间TTFB', start: 180, duration: 200, category: 'network' },
+        { name: 'HTML文档内容下载传输', start: 380, duration: 150, category: 'network' },
+        { name: 'CSS样式表文件并行加载', start: 400, duration: 180, category: 'network' },
+        { name: 'JavaScript脚本文件异步加载', start: 420, duration: 220, category: 'network' },
+
+        // HTML解析阶段
+        { name: 'HTML标记词法分析和语法解析', start: 530, duration: 120, category: 'parsing' },
+        { name: 'DOM树构建和节点创建', start: 580, duration: 150, category: 'parsing' },
+        { name: 'CSS样式表规则解析处理', start: 650, duration: 100, category: 'parsing' },
+
+        // JavaScript执行阶段
+        { name: '主线程JavaScript代码执行初始化', start: 750, duration: 200, category: 'scripting' },
+        { name: 'React框架虚拟DOM对比计算', start: 900, duration: 180, category: 'scripting' },
+        { name: '组件生命周期方法和钩子函数执行', start: 950, duration: 140, category: 'scripting' },
+        { name: '事件监听器注册和绑定操作', start: 1050, duration: 90, category: 'scripting' },
+
+        // 渲染和绘制阶段
+        { name: '样式重新计算和层叠规则应用', start: 1400, duration: 130, category: 'rendering' },
+        { name: '页面布局Layout重排和几何信息计算', start: 1500, duration: 160, category: 'rendering' },
+        { name: '绘制Paint指令生成和像素填充', start: 1620, duration: 140, category: 'rendering' },
+        { name: '合成Composite图层合并和纹理上传GPU', start: 1720, duration: 120, category: 'rendering' },
+      ]
+    };
+  };
+
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (historyDropdownRef.current && !historyDropdownRef.current.contains(event.target as Node)) {
+        setShowHistoryDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 保存到历史记录
+  const saveToHistory = (newData: PerformanceData) => {
+    const newRecord: HistoryRecord = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      data: newData
+    };
+
+    const updatedHistory = [newRecord, ...history].slice(0, MAX_HISTORY_COUNT);
+    setHistory(updatedHistory);
+    setSelectedHistoryId(newRecord.id);
+    localStorage.setItem('performanceHistory', JSON.stringify(updatedHistory));
+  };
+
+  // 从历史记录加载数据
+  const loadFromHistory = (recordId: string) => {
+    const record = history.find(r => r.id === recordId);
+    if (record) {
+      setData(record.data);
+      setSelectedHistoryId(recordId);
+      localStorage.setItem('performanceData', JSON.stringify(record.data));
+      setShowHistoryDropdown(false);
+      setSelectedEvent(null);
+    }
+  };
+
+  // 删除历史记录
+  const deleteHistoryItem = (e: React.MouseEvent, recordId: string) => {
+    e.stopPropagation();
+    const updatedHistory = history.filter(r => r.id !== recordId);
+    setHistory(updatedHistory);
+    localStorage.setItem('performanceHistory', JSON.stringify(updatedHistory));
+
+    if (selectedHistoryId === recordId) {
+      if (updatedHistory.length > 0) {
+        setSelectedHistoryId(updatedHistory[0].id);
+        loadFromHistory(updatedHistory[0].id);
+      } else {
+        setSelectedHistoryId(null);
+        setData(null);
+      }
+    }
+  };
+
+  // 格式化时间戳
+  const formatTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    if (isToday) {
+      return `今天 ${time}`;
+    }
+    return `${date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })} ${time}`;
+  };
 
   // 处理数据加载
   const handleLoadData = () => {
@@ -53,6 +193,8 @@ const PerformanceProfiler = () => {
       }
 
       setData(processedData);
+      saveToHistory(processedData);
+      localStorage.setItem('performanceData', JSON.stringify(processedData));
       setError('');
       setSelectedEvent(null);
       setShowDataDialog(false);
@@ -83,71 +225,6 @@ const PerformanceProfiler = () => {
       events,
       startTime
     };
-  };
-
-  // 加载示例数据
-  const loadSampleData = () => {
-    const sampleData: PerformanceData = {
-      title: 'Web应用完整加载流程性能分析',
-      events: [
-        // 网络请求阶段
-        { name: 'DNS解析与TCP连接', start: 0, duration: 80, category: 'network' },
-        { name: 'TLS握手建立安全连接', start: 80, duration: 60, category: 'network' },
-        { name: 'HTTP请求发送头部信息', start: 140, duration: 40, category: 'network' },
-        { name: '服务器响应等待时间TTFB', start: 180, duration: 200, category: 'network' },
-        { name: 'HTML文档内容下载传输', start: 380, duration: 150, category: 'network' },
-        { name: 'CSS样式表文件并行加载', start: 400, duration: 180, category: 'network' },
-        { name: 'JavaScript脚本文件异步加载', start: 420, duration: 220, category: 'network' },
-        { name: '图片资源和字体文件预加载', start: 450, duration: 300, category: 'network' },
-        { name: '第三方API接口数据请求', start: 500, duration: 250, category: 'network' },
-
-        // HTML解析阶段
-        { name: 'HTML标记词法分析和语法解析', start: 530, duration: 120, category: 'parsing' },
-        { name: 'DOM树构建和节点创建', start: 580, duration: 150, category: 'parsing' },
-        { name: 'CSS样式表规则解析处理', start: 650, duration: 100, category: 'parsing' },
-        { name: 'CSSOM样式对象模型树构建', start: 700, duration: 80, category: 'parsing' },
-
-        // JavaScript执行阶段
-        { name: '主线程JavaScript代码执行初始化', start: 750, duration: 200, category: 'scripting' },
-        { name: 'React框架虚拟DOM对比计算', start: 900, duration: 180, category: 'scripting' },
-        { name: '组件生命周期方法和钩子函数执行', start: 950, duration: 140, category: 'scripting' },
-        { name: '事件监听器注册和绑定操作', start: 1050, duration: 90, category: 'scripting' },
-        { name: '异步定时器setTimeout和setInterval设置', start: 1100, duration: 60, category: 'scripting' },
-        { name: 'Promise异步操作和回调函数处理', start: 1120, duration: 170, category: 'scripting' },
-        { name: 'Web Worker后台线程数据处理', start: 1150, duration: 250, category: 'scripting' },
-        { name: 'JSON数据解析和对象序列化', start: 1200, duration: 110, category: 'scripting' },
-        { name: '大型数组遍历和复杂数据结构操作', start: 1250, duration: 190, category: 'scripting' },
-
-        // 渲染和绘制阶段
-        { name: '样式重新计算和层叠规则应用', start: 1400, duration: 130, category: 'rendering' },
-        { name: '页面布局Layout重排和几何信息计算', start: 1500, duration: 160, category: 'rendering' },
-        { name: '绘制Paint指令生成和像素填充', start: 1620, duration: 140, category: 'rendering' },
-        { name: '合成Composite图层合并和纹理上传GPU', start: 1720, duration: 120, category: 'rendering' },
-        { name: '光栅化Raster位图生成过程', start: 1800, duration: 100, category: 'rendering' },
-        { name: '浏览器主线程阻塞任务处理', start: 1850, duration: 80, category: 'rendering' },
-        { name: '帧动画requestAnimationFrame回调', start: 1900, duration: 70, category: 'rendering' },
-
-        // 用户交互响应
-        { name: '用户点击事件监听和冒泡处理', start: 1950, duration: 90, category: 'scripting' },
-        { name: '表单输入验证和数据校验逻辑', start: 2000, duration: 110, category: 'scripting' },
-        { name: '局部DOM更新和增量渲染', start: 2080, duration: 130, category: 'rendering' },
-
-        // 后台处理
-        { name: 'LocalStorage数据读写持久化操作', start: 2150, duration: 80, category: 'scripting' },
-        { name: 'IndexedDB数据库事务处理', start: 2200, duration: 150, category: 'scripting' },
-        { name: 'Service Worker后台同步任务', start: 2300, duration: 200, category: 'network' },
-        { name: 'Web Assembly模块加载和编译', start: 2350, duration: 180, category: 'scripting' },
-
-        // 性能优化
-        { name: '代码分割chunk和懒加载执行', start: 2500, duration: 160, category: 'scripting' },
-        { name: '内存垃圾回收GC暂停标记清除', start: 2620, duration: 120, category: 'scripting' },
-        { name: '图片资源懒加载和占位显示', start: 2700, duration: 90, category: 'network' },
-        { name: '虚拟列表滚动优化计算可见区域', start: 2750, duration: 70, category: 'rendering' }
-      ]
-    };
-    setData(sampleData);
-    setError('');
-    setSelectedEvent(null);
   };
 
   // 获取时间范围
@@ -397,14 +474,63 @@ const PerformanceProfiler = () => {
     <div className="tool-container">
       <div className="performance-header">
         <h2>性能分析器</h2>
-        <button
-          className="btn-load-data"
-          onClick={handleOpenDataDialog}
-          title="加载数据"
-        >
-          <Icon name="upload" size={18} />
-          加载数据
-        </button>
+        <div className="header-actions">
+          {/* 历史记录选择器 */}
+          {history.length > 0 && (
+            <div className="history-selector" ref={historyDropdownRef}>
+              <button
+                className="btn-history"
+                onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                title="历史记录"
+              >
+                <Icon name="history" size={18} />
+                历史 ({history.length})
+                <Icon name={showHistoryDropdown ? 'chevronUp' : 'chevronDown'} size={14} />
+              </button>
+              {showHistoryDropdown && (
+                <div className="history-dropdown">
+                  <div className="history-header">
+                    <span>历史记录</span>
+                    <span className="history-count">最多保留 {MAX_HISTORY_COUNT} 条</span>
+                  </div>
+                  <div className="history-list">
+                    {history.map((record) => (
+                      <div
+                        key={record.id}
+                        className={`history-item ${record.id === selectedHistoryId ? 'active' : ''}`}
+                        onClick={() => loadFromHistory(record.id)}
+                      >
+                        <div className="history-item-main">
+                          <Icon name="clock" size={14} />
+                          <span className="history-time">{formatTimestamp(record.timestamp)}</span>
+                          <span className="history-title">{record.data.title || '未命名'}</span>
+                        </div>
+                        <div className="history-item-info">
+                          <span>{record.data.events.length} 个事件</span>
+                        </div>
+                        <button
+                          className="btn-delete-history"
+                          onClick={(e) => deleteHistoryItem(e, record.id)}
+                          title="删除"
+                        >
+                          <Icon name="close" size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <button
+            className="btn-load-data"
+            onClick={handleOpenDataDialog}
+            title="加载数据"
+          >
+            <Icon name="upload" size={18} />
+            加载数据
+          </button>
+        </div>
       </div>
 
       <div className="tool-content">

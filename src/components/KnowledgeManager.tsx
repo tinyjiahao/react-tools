@@ -231,10 +231,17 @@ const KnowledgeManager = () => {
       try {
         setLoading(true);
         const response = await fetch('/docs/km.txt');
-        if (!response.ok) {
-          throw new Error('Failed to load knowledge data');
-        }
         const text = await response.text();
+
+        // 检查响应是否是 HTML（404 页面）
+        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+          throw new Error('知识库数据文件不存在，请在 /public/docs/km.txt 添加数据');
+        }
+
+        if (!response.ok) {
+          throw new Error(`加载失败: ${response.status} ${response.statusText}`);
+        }
+
         const json = JSON.parse(text) as KmData;
         setData(json);
       } catch (err) {
