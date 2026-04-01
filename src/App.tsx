@@ -11,11 +11,12 @@ import MarkdownViewer from './components/MarkdownViewer';
 import R2ImageManager from './components/R2ImageManager';
 import NotesManager from './components/NotesManager';
 import KnowledgeManager from './components/KnowledgeManager';
+import PerformanceProfiler from './components/PerformanceProfiler';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance';
 
 // 定义工具分类
 interface ToolCategory {
@@ -69,6 +70,13 @@ const toolCategories: ToolCategory[] = [
     tools: [
       { id: 'knowledge', name: '知识库', description: '富文本知识库内容查看' }
     ]
+  },
+  {
+    name: '开发工具',
+    icon: 'activity',
+    tools: [
+      { id: 'performance', name: '性能分析器', description: '上传数据生成甘特图进行性能分析' }
+    ]
   }
 ];
 
@@ -84,7 +92,8 @@ const toolIdToPath: Record<ToolType, string> = {
   'markdown-viewer': 'markdown-viewer',
   'r2-image-manager': 'r2-image-manager',
   'notes': 'notes',
-  'knowledge': 'knowledge'
+  'knowledge': 'knowledge',
+  'performance': 'performance'
 };
 
 // URL路径到工具ID的映射
@@ -99,7 +108,8 @@ const pathToToolId: Record<string, ToolType> = {
   'markdown-viewer': 'markdown-viewer',
   'r2-image-manager': 'r2-image-manager',
   'notes': 'notes',
-  'knowledge': 'knowledge'
+  'knowledge': 'knowledge',
+  'performance': 'performance'
 };
 
 function App() {
@@ -292,6 +302,7 @@ function App() {
           {activeTool === 'r2-image-manager' && <R2ImageManager />}
           {activeTool === 'notes' && <NotesManager />}
           {activeTool === 'knowledge' && <KnowledgeManager />}
+          {activeTool === 'performance' && <PerformanceProfiler />}
         </div>
       </main>
 

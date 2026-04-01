@@ -1,0 +1,286 @@
+{
+    "title": "ShopRequestInitPerformance",
+    "description": "包含 40 个阶段的性能监控数据，总耗时 85 ms",
+    "events": [
+        {
+            "name": "1-originKeywordInit",
+            "start": 0,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "2-superDoProcess",
+            "start": 0,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "3-atpInit",
+            "start": 0,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "4-sensitiveUserProcess",
+            "start": 0,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "5-addSearchRequestInfo",
+            "start": 0,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "6-flowInitProcessors",
+            "start": 0,
+            "duration": 84,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "6-1-DaozongActivityRewriteProcessor",
+            "start": 0,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-2-UserModePreProcessor",
+            "start": 0,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-3-RedEnvelopeRewriteProcessor",
+            "start": 0,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-4-UserMustangPreProcessor",
+            "start": 0,
+            "duration": 2,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-5-MergerQuAdapterPreFlow",
+            "start": 2,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-6-PictureBizerPreProcessor",
+            "start": 2,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-7-UserModePostProcessor",
+            "start": 2,
+            "duration": 2,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-8-MergerQuiaPreFlow",
+            "start": 4,
+            "duration": 1,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-9-CellarPreProcessor",
+            "start": 5,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-10-UserProfilePreProcessor",
+            "start": 5,
+            "duration": 1,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-11-OutSiteActiveNewUserPreProcessor",
+            "start": 6,
+            "duration": 1,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-12-FlowTagAsyncCallProcessor",
+            "start": 7,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-13-AddOverSeasTrafficTagProcessor",
+            "start": 7,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-14-GetQueryTypeMainCategoryProcessor",
+            "start": 7,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-15-MergerQuiaPostFlow",
+            "start": 7,
+            "duration": 49,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-16-QUIARecallGrammarBuildProcessor",
+            "start": 56,
+            "duration": 2,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-17-MergerQuAdapterPostFlow",
+            "start": 58,
+            "duration": 1,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-18-GetOriginScorerInfoProcessor",
+            "start": 59,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-19-UserProfilePostProcessor",
+            "start": 59,
+            "duration": 4,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-20-AddCityAnalysisInfoProcessor",
+            "start": 63,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-21-UserMustangPostProcessor",
+            "start": 63,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-22-FlowTagProcessor",
+            "start": 63,
+            "duration": 18,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-23-GrayCellProcessor",
+            "start": 81,
+            "duration": 3,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-24-ReqRewriteAfterQUProcessor",
+            "start": 84,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "6-25-CellarProcessor",
+            "start": 84,
+            "duration": 0,
+            "category": "6-flowInitProcessors",
+            "details": {}
+        },
+        {
+            "name": "7-normalizeUserId",
+            "start": 84,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "8-addUserKuaiShaiTab",
+            "start": 84,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "9-wifiTopShop",
+            "start": 84,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "10-addWishFuture",
+            "start": 84,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "11-keywordResultCount",
+            "start": 84,
+            "duration": 1,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "12-fillClientVersion",
+            "start": 85,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "13-oneStopDebug",
+            "start": 85,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "14-matchNewCompSearchService",
+            "start": 85,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        },
+        {
+            "name": "15-isCityAnalysisUnknownSearch",
+            "start": 85,
+            "duration": 0,
+            "category": "ShopRequestInitPerformance",
+            "details": {}
+        }
+    ]
+}

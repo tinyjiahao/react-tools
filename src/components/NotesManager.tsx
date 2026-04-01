@@ -347,6 +347,13 @@ const NotesManager = () => {
     }
   }, []);
 
+  // 手动保存笔记 - 使用 ref 中的最新数据
+  const handleManualSave = useCallback(async () => {
+    const latestNote = currentNoteRef.current;
+    if (!latestNote) return;
+    await saveNote(latestNote);
+  }, [saveNote]);
+
   // 防抖自动保存 - 使用 ref 获取最新内容
   useEffect(() => {
     if (!selectedNote) return;
@@ -621,7 +628,7 @@ const NotesManager = () => {
                   </button>
                   <button
                     className="btn btn-primary btn-small"
-                    onClick={() => saveNote(selectedNote)}
+                    onClick={handleManualSave}
                     disabled={saving}
                     title="保存笔记"
                   >

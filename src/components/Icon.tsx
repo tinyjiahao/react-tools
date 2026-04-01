@@ -250,6 +250,19 @@ const Icon: React.FC<IconProps> = ({ name, size = 18, className = '' }) => {
           <line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       )}
+      {name === 'activity' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      )}
+      {name === 'gantt' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <rect x="3" y="3" width="18" height="4" rx="1"/>
+          <rect x="3" y="9" width="12" height="4" rx="1"/>
+          <rect x="3" y="15" width="15" height="4" rx="1"/>
+          <line x1="20" y1="3" x2="20" y2="19"/>
+        </svg>
+      )}
     </span>
   );
 };

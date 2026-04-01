@@ -1,0 +1,428 @@
+{
+  "title": "企业级Web应用完整性能分析报告",
+  "description": "包含从用户访问到页面完全交互的完整性能监控数据",
+  "events": [
+    {
+      "name": "DNS解析与域名查找",
+      "start": 0,
+      "duration": 85,
+      "category": "network",
+      "details": {
+        "dnsServer": "8.8.8.8",
+        "cacheHit": false
+      }
+    },
+    {
+      "name": "TCP三次握手建立连接",
+      "start": 85,
+      "duration": 65,
+      "category": "network",
+      "details": {
+        "serverIP": "192.168.1.100",
+        "port": 443
+      }
+    },
+    {
+      "name": "TLS/SSL安全连接握手",
+      "start": 150,
+      "duration": 120,
+      "category": "network",
+      "details": {
+        "protocol": "TLS 1.3",
+        "cipherSuite": "TLS_AES_256_GCM_SHA384"
+      }
+    },
+    {
+      "name": "HTTP请求头发送",
+      "start": 270,
+      "duration": 45,
+      "category": "network",
+      "details": {
+        "method": "GET",
+        "headers": 1200
+      }
+    },
+    {
+      "name": "服务器处理时间TTFB",
+      "start": 315,
+      "duration": 380,
+      "category": "network",
+      "details": {
+        "server": "nginx/1.21.0",
+        "backendTime": 320
+      }
+    },
+    {
+      "name": "HTML文档下载传输",
+      "start": 695,
+      "duration": 245,
+      "category": "network",
+      "details": {
+        "size": "45KB",
+        "compressed": true,
+        "compressionRatio": 0.35
+      }
+    },
+    {
+      "name": "CSS样式表并行加载",
+      "start": 720,
+      "duration": 280,
+      "category": "network",
+      "details": {
+        "files": ["bootstrap.css", "custom.css"],
+        "totalSize": "120KB"
+      }
+    },
+    {
+      "name": "JavaScript主线程脚本加载",
+      "start": 750,
+      "duration": 350,
+      "category": "network",
+      "details": {
+        "files": ["app.js", "vendor.js"],
+        "totalSize": "450KB",
+        "defer": true
+      }
+    },
+    {
+      "name": "字体文件和图标资源预加载",
+      "start": 800,
+      "duration": 420,
+      "category": "network",
+      "details": {
+        "fonts": ["Roboto.woff2", "MaterialIcons.woff2"],
+        "totalSize": "280KB"
+      }
+    },
+    {
+      "name": "图片资源和媒体文件加载",
+      "start": 850,
+      "duration": 680,
+      "category": "network",
+      "details": {
+        "images": 15,
+        "totalSize": "2.8MB",
+        "lazy": true
+      }
+    },
+    {
+      "name": "第三方API数据请求",
+      "start": 900,
+      "duration": 520,
+      "category": "network",
+      "details": {
+        "endpoints": ["/api/user", "/api/config"],
+        "cached": false
+      }
+    },
+    {
+      "name": "HTML标记词法分析",
+      "start": 940,
+      "duration": 180,
+      "category": "parsing",
+      "details": {
+        "tokens": 3450,
+        "selfClosing": 120
+      }
+    },
+    {
+      "name": "DOM树构建节点创建",
+      "start": 1080,
+      "duration": 240,
+      "category": "parsing",
+      "details": {
+        "elements": 1890,
+        "depth": 18
+      }
+    },
+    {
+      "name": "CSS样式规则解析",
+      "start": 1280,
+      "duration": 160,
+      "category": "parsing",
+      "details": {
+        "rules": 560,
+        "selectors": 2340
+      }
+    },
+    {
+      "name": "CSSOM样式对象模型构建",
+      "start": 1400,
+      "duration": 130,
+      "category": "parsing",
+      "details": {
+        "computedStyles": 1890
+      }
+    },
+    {
+      "name": "JavaScript全局上下文初始化",
+      "start": 1500,
+      "duration": 280,
+      "category": "scripting",
+      "details": {
+        "variables": 145,
+        "functions": 89
+      }
+    },
+    {
+      "name": "React框架初始化和虚拟DOM创建",
+      "start": 1750,
+      "duration": 340,
+      "category": "scripting",
+      "details": {
+        "components": 45,
+        "hooks": 120
+      }
+    },
+    {
+      "name": "React组件树协调Diff算法执行",
+      "start": 2050,
+      "duration": 260,
+      "category": "scripting",
+      "details": {
+        "comparisons": 2340,
+        "updates": 156
+      }
+    },
+    {
+      "name": "组件生命周期方法执行",
+      "start": 2280,
+      "duration": 190,
+      "category": "scripting",
+      "details": {
+        "mount": 45,
+        "update": 12
+      }
+    },
+    {
+      "name": "事件监听器注册和绑定",
+      "start": 2420,
+      "duration": 140,
+      "category": "scripting",
+      "details": {
+        "listeners": 68,
+        "delegated": true
+      }
+    },
+    {
+      "name": "异步定时器任务初始化",
+      "start": 2520,
+      "duration": 90,
+      "category": "scripting",
+      "details": {
+        "setTimeout": 8,
+        "setInterval": 3
+      }
+    },
+    {
+      "name": "Promise微任务队列处理",
+      "start": 2580,
+      "duration": 170,
+      "category": "scripting",
+      "details": {
+        "promises": 45,
+        "asyncAwait": 23
+      }
+    },
+    {
+      "name": "Web Worker后台数据计算",
+      "start": 2650,
+      "duration": 380,
+      "category": "scripting",
+      "details": {
+        "workers": 2,
+        "tasks": ["数据处理", "图像转换"]
+      }
+    },
+    {
+      "name": "JSON大对象解析和序列化",
+      "start": 2800,
+      "duration": 220,
+      "category": "scripting",
+      "details": {
+        "size": "1.2MB",
+        "nestedDepth": 8
+      }
+    },
+    {
+      "name": "数组map/reduce/filter操作",
+      "start": 2980,
+      "duration": 160,
+      "category": "scripting",
+      "details": {
+        "operations": 1250,
+        "items": 50000
+      }
+    },
+    {
+      "name": "样式重新计算Reflow",
+      "start": 3100,
+      "duration": 180,
+      "category": "rendering",
+      "details": {
+        "elements": 1890,
+        "invalidations": 234
+      }
+    },
+    {
+      "name": "页面布局Layout几何计算",
+      "start": 3250,
+      "duration": 240,
+      "category": "rendering",
+      "details": {
+        "reflows": 12,
+        "layoutTime": 180
+      }
+    },
+    {
+      "name": "绘制Paint像素填充操作",
+      "start": 3460,
+      "duration": 200,
+      "category": "rendering",
+      "details": {
+        "paintAreas": 45,
+        "pixels": "8.2M"
+      }
+    },
+    {
+      "name": "合成Composite图层合并",
+      "start": 3630,
+      "duration": 160,
+      "category": "rendering",
+      "details": {
+        "layers": 8,
+        "composites": 156
+      }
+    },
+    {
+      "name": "光栅化Raster位图生成",
+      "start": 3760,
+      "duration": 140,
+      "category": "rendering",
+      "details": {
+        "tiles": 234,
+        "gpuAcceleration": true
+      }
+    },
+    {
+      "name": "GPU纹理上传和渲染",
+      "start": 3870,
+      "duration": 110,
+      "category": "rendering",
+      "details": {
+        "textures": 8,
+        "uploadTime": 85
+      }
+    },
+    {
+      "name": "requestAnimationFrame帧回调",
+      "start": 3950,
+      "duration": 80,
+      "category": "rendering",
+      "details": {
+        "fps": 60,
+        "callbacks": 12
+      }
+    },
+    {
+      "name": "用户点击事件处理",
+      "start": 4000,
+      "duration": 120,
+      "category": "scripting",
+      "details": {
+        "type": "click",
+        "target": "button#submit"
+      }
+    },
+    {
+      "name": "表单数据验证和校验",
+      "start": 4080,
+      "duration": 95,
+      "category": "scripting",
+      "details": {
+        "fields": 15,
+        "errors": 2
+      }
+    },
+    {
+      "name": "局部DOM增量更新",
+      "start": 4140,
+      "duration": 140,
+      "category": "rendering",
+      "details": {
+        "patches": 8,
+        "virtualDiff": true
+      }
+    },
+    {
+      "name": "LocalStorage数据持久化",
+      "start": 4250,
+      "duration": 110,
+      "category": "scripting",
+      "details": {
+        "keys": 12,
+        "size": "45KB"
+      }
+    },
+    {
+      "name": "IndexedDB数据库事务",
+      "start": 4330,
+      "duration": 190,
+      "category": "scripting",
+      "details": {
+        "stores": 3,
+        "records": 156
+      }
+    },
+    {
+      "name": "Service Worker后台同步",
+      "start": 4480,
+      "duration": 240,
+      "category": "network",
+      "details": {
+        "syncs": 5,
+        "background": true
+      }
+    },
+    {
+      "name": "WebAssembly模块编译",
+      "start": 4680,
+      "duration": 320,
+      "category": "scripting",
+      "details": {
+        "modules": 2,
+        "size": "850KB"
+      }
+    },
+    {
+      "name": "代码分割动态导入",
+      "start": 4950,
+      "duration": 180,
+      "category": "scripting",
+      "details": {
+        "chunks": 3,
+        "lazy": true
+      }
+    },
+    {
+      "name": "内存垃圾回收GC标记清除",
+      "start": 5100,
+      "duration": 150,
+      "category": "scripting",
+      "details": {
+        "collected": "2.3MB",
+        "generation": "young"
+      }
+    },
+    {
+      "name": "虚拟列表滚动优化渲染",
+      "start": 5220,
+      "duration": 90,
+      "category": "rendering",
+      "details": {
+        "visible": 15,
+        "total": 1000
+      }
+    }
+  ]
+}
