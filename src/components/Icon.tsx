@@ -280,6 +280,12 @@ const Icon: React.FC<IconProps> = ({ name, size = 18, className = '' }) => {
           <polyline points="18 15 12 9 6 15"/>
         </svg>
       )}
+      {name === 'book' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      )}
     </span>
   );
 };
