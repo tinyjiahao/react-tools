@@ -1,286 +1,468 @@
 {
-    "title": "ShopRequestInitPerformance",
-    "description": "包含 40 个阶段的性能监控数据，总耗时 85 ms",
-    "events": [
-        {
-            "name": "1-originKeywordInit",
-            "start": 0,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "2-superDoProcess",
-            "start": 0,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "3-atpInit",
-            "start": 0,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "4-sensitiveUserProcess",
-            "start": 0,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "5-addSearchRequestInfo",
-            "start": 0,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "6-flowInitProcessors",
-            "start": 0,
-            "duration": 84,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "6-1-DaozongActivityRewriteProcessor",
-            "start": 0,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-2-UserModePreProcessor",
-            "start": 0,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-3-RedEnvelopeRewriteProcessor",
-            "start": 0,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-4-UserMustangPreProcessor",
-            "start": 0,
-            "duration": 2,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-5-MergerQuAdapterPreFlow",
-            "start": 2,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-6-PictureBizerPreProcessor",
-            "start": 2,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-7-UserModePostProcessor",
-            "start": 2,
-            "duration": 2,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-8-MergerQuiaPreFlow",
-            "start": 4,
-            "duration": 1,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-9-CellarPreProcessor",
-            "start": 5,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-10-UserProfilePreProcessor",
-            "start": 5,
-            "duration": 1,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-11-OutSiteActiveNewUserPreProcessor",
-            "start": 6,
-            "duration": 1,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-12-FlowTagAsyncCallProcessor",
-            "start": 7,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-13-AddOverSeasTrafficTagProcessor",
-            "start": 7,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-14-GetQueryTypeMainCategoryProcessor",
-            "start": 7,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-15-MergerQuiaPostFlow",
-            "start": 7,
-            "duration": 49,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-16-QUIARecallGrammarBuildProcessor",
-            "start": 56,
-            "duration": 2,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-17-MergerQuAdapterPostFlow",
-            "start": 58,
-            "duration": 1,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-18-GetOriginScorerInfoProcessor",
-            "start": 59,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-19-UserProfilePostProcessor",
-            "start": 59,
-            "duration": 4,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-20-AddCityAnalysisInfoProcessor",
-            "start": 63,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-21-UserMustangPostProcessor",
-            "start": 63,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-22-FlowTagProcessor",
-            "start": 63,
-            "duration": 18,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-23-GrayCellProcessor",
-            "start": 81,
-            "duration": 3,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-24-ReqRewriteAfterQUProcessor",
-            "start": 84,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "6-25-CellarProcessor",
-            "start": 84,
-            "duration": 0,
-            "category": "6-flowInitProcessors",
-            "details": {}
-        },
-        {
-            "name": "7-normalizeUserId",
-            "start": 84,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "8-addUserKuaiShaiTab",
-            "start": 84,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "9-wifiTopShop",
-            "start": 84,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "10-addWishFuture",
-            "start": 84,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "11-keywordResultCount",
-            "start": 84,
-            "duration": 1,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "12-fillClientVersion",
-            "start": 85,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "13-oneStopDebug",
-            "start": 85,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "14-matchNewCompSearchService",
-            "start": 85,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        },
-        {
-            "name": "15-isCityAnalysisUnknownSearch",
-            "start": 85,
-            "duration": 0,
-            "category": "ShopRequestInitPerformance",
-            "details": {}
-        }
-    ]
+  "title": "MainShopMergerPerformance",
+  "description": "包含 66 个阶段的性能监控数据，总耗时 1252 ms",
+  "events": [
+    {
+      "name": "A1-originKeywordInit",
+      "start": 0,
+      "duration": 0,
+      "category": "MainShopMergerPerformance",
+      "details": {}
+    },
+    {
+      "name": "A2-superDoProcess",
+      "start": 0,
+      "duration": 0,
+      "category": "MainShopMergerPerformance",
+      "details": {}
+    },
+    {
+      "name": "A3-atpInit",
+      "start": 0,
+      "duration": 0,
+      "category": "MainShopMergerPerformance",
+      "details": {}
+    },
+    {
+      "name": "A4-sensitiveUserProcess",
+      "start": 0,
+      "duration": 0,
+      "category": "MainShopMergerPerformance",
+      "details": {}
+    },
+    {
+      "name": "A5-addSearchRequestInfo",
+      "start": 0,
+      "duration": 0,
+      "category": "MainShopMergerPerformance",
+      "details": {}
+    },
+    {
+      "name": "A6-B1-DaozongActivityRewriteProcessor",
+      "start": 0,
+      "duration": 1,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B2-UserModePreProcessor",
+      "start": 1,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B3-RedEnvelopeRewriteProcessor",
+      "start": 1,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B4-UserMustangPreProcessor",
+      "start": 1,
+      "duration": 1,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B5-MergerQuAdapterPreFlow",
+      "start": 2,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B6-PictureBizerPreProcessor",
+      "start": 2,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B7-UserModePostProcessor",
+      "start": 2,
+      "duration": 3,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B8-MergerQuiaPreFlow",
+      "start": 5,
+      "duration": 2,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B9-CellarPreProcessor",
+      "start": 7,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B10-UserProfilePreProcessor",
+      "start": 7,
+      "duration": 1,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B11-OutSiteActiveNewUserPreProcessor",
+      "start": 8,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B12-FlowTagAsyncCallProcessor",
+      "start": 8,
+      "duration": 1,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B13-AddOverSeasTrafficTagProcessor",
+      "start": 9,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B14-GetQueryTypeMainCategoryProcessor",
+      "start": 9,
+      "duration": 0,
+      "category": "A6-flowInitProcessors",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C1-retrieveQUIAResponse",
+      "start": 9,
+      "duration": 47,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C2-retrieveQUIAResponse4GuideKeywords",
+      "start": 56,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C3-processQcInfo",
+      "start": 56,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C4-storeQuiaRedisCache",
+      "start": 56,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C5-reportQUIAResult",
+      "start": 56,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C6-QUIARecallGrammarBuildProcessor",
+      "start": 56,
+      "duration": 1,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C7-MergerQuAdapterPostFlow",
+      "start": 57,
+      "duration": 2,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C8-GetOriginScorerInfoProcessor",
+      "start": 59,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C9-UserProfilePostProcessor",
+      "start": 59,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C10-AddCityAnalysisInfoProcessor",
+      "start": 59,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C11-UserMustangPostProcessor",
+      "start": 59,
+      "duration": 0,
+      "category": "A6-B15-MergerQuiaPostFlow",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D1-getFlowTags",
+      "start": 59,
+      "duration": 1,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D2-buildMainshopFlowTag",
+      "start": 60,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D3-abTestMatchFlow",
+      "start": 60,
+      "duration": 7,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D4-saveFlowSegmentIds",
+      "start": 67,
+      "duration": 19,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D5-GrayCellProcessor",
+      "start": 86,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D6-ReqRewriteAfterQUProcessor",
+      "start": 88,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D7-CellarProcessor",
+      "start": 88,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D8-normalizeUserId",
+      "start": 88,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D9-addUserKuaiShaiTab",
+      "start": 88,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D10-wifiTopShop",
+      "start": 88,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D11-addWishFuture",
+      "start": 88,
+      "duration": 1,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D12-keywordResultCount",
+      "start": 89,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D13-fillClientVersion",
+      "start": 90,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D14-oneStopDebug",
+      "start": 90,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D15-matchNewCompSearchService",
+      "start": 90,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D16-isCityAnalysisUnknownSearch",
+      "start": 90,
+      "duration": 0,
+      "category": "A6-B15-C12-FlowTagProcessor",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E1-EmptyInvokeProxy",
+      "start": 128,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E2-NoteInvokeProxy",
+      "start": 128,
+      "duration": 780,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E3-DpuserSearchBizerServiceInvokeProxy",
+      "start": 908,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E4-MainshopBizerInvokeProxy",
+      "start": 908,
+      "duration": 343,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E5-CompAdsBizerInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E6-BrandAdCompInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E7-AladdinCompInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E8-AladdinWaimaiCardCompInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E9-AladdinProductRankCardCompInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E10-AladdinPromotionCardInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E11-AladdinTejiatuangouCardCompInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E12-AladdinLiveBoardCompInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E13-AladdinGovernmentAffairsInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E14-AladdinServiceInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E15-DirectZoneInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E16-ShowBizerServiceInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E17-MarketingActivitiesInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E18-HaimaOperationInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E19-GuideWordsWithShopInvokeProxy",
+      "start": 1251,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-retrieveResponses",
+      "details": {}
+    },
+    {
+      "name": "A6-B15-C12-D17-E20-F1-mergeDirectZone2ResponseContext",
+      "start": 1252,
+      "duration": 0,
+      "category": "A6-B15-C12-D17-E20-mergeResponses",
+      "details": {}
+    }
+  ]
 }

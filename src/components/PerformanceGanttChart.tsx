@@ -25,7 +25,6 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState({ left: 0, top: 0 });
 
-  // 保存滚动位置，避免重新渲染时重置
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -41,7 +40,6 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // 恢复滚动位置
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (container && (scrollPosition.left !== 0 || scrollPosition.top !== 0)) {
@@ -54,44 +52,54 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
     return <div className="gantt-empty">暂无数据</div>;
   }
 
-  // 计算时间范围
   const minStart = Math.min(...events.map(e => e.start));
   const maxEnd = Math.max(...events.map(e => e.start + e.duration));
   const totalDuration = maxEnd - minStart;
 
-  // 配置
-  const rowHeight = 48;
-  const headerHeight = 60;
-  const labelWidth = 300;
+  const rowHeight = 52;
+  const headerHeight = 56;
   const timeMarkerCount = 10;
 
-  const getCategoryColor = (category?: string) => {
-    // 定义默认颜色
-    const defaultColors: Record<string, string> = {
-      network: '#3b82f6',
-      parsing: '#10b981',
-      scripting: '#f59e0b',
-      rendering: '#8b5cf6',
-      default: '#6b7280'
-    };
+  // 更丰富的分类颜色方案
+  const colorPalette = [
+    { bg: '#3b82f6', light: '#eff6ff' },   // 蓝色
+    { bg: '#10b981', light: '#ecfdf5' },   // 绿色
+    { bg: '#f59e0b', light: '#fffbeb' },   // 琥珀色
+    { bg: '#8b5cf6', light: '#f5f3ff' },   // 紫色
+    { bg: '#ef4444', light: '#fef2f2' },   // 红色
+    { bg: '#ec4899', light: '#fdf2f8' },   // 粉色
+    { bg: '#14b8a6', light: '#f0fdfa' },   // 青色
+    { bg: '#f97316', light: '#fff7ed' },   // 橙色
+    { bg: '#06b6d4', light: '#ecfeff' },   // 天蓝
+    { bg: '#84cc16', light: '#f7fee7' },   // 黄绿
+    { bg: '#a855f7', light: '#faf5ff' },   // 浅紫
+    { bg: '#e11d48', light: '#fff1f2' },   // 玫红
+  ];
 
-    // 合并传入的颜色和默认颜色
-    const colors = { ...defaultColors, ...categoryColors };
-    return colors[category || ''] || colors.default || '#6b7280';
+  // 为每个事件生成颜色，同分类共享颜色
+  const categoryColorMap = new Map<string, { bg: string; light: string }>();
+  let colorIndex = 0;
+
+  const getEventColor = (event: PerformanceEvent) => {
+    const key = event.category || event.name;
+    if (categoryColors[event.category || '']) {
+      return { bg: categoryColors[event.category || ''], light: '#f9fafb' };
+    }
+    if (!categoryColorMap.has(key)) {
+      categoryColorMap.set(key, colorPalette[colorIndex % colorPalette.length]);
+      colorIndex++;
+    }
+    return categoryColorMap.get(key)!;
   };
+
+  const eventsAreaHeight = events.length * rowHeight;
 
   return (
     <div className="performance-gantt-chart">
       <div className="gantt-scroll-container" ref={scrollContainerRef}>
-        <div
-          className="gantt-content"
-          style={{
-            height: `${headerHeight + events.length * rowHeight}px`,
-            minWidth: `${labelWidth + 800}px`
-          }}
-        >
+        <div className="gantt-content">
           {/* 左侧标签区域 */}
-          <div className="gantt-labels" style={{ width: `${labelWidth}px` }}>
+          <div className="gantt-labels">
             <div className="gantt-label-header" style={{ height: `${headerHeight}px` }}>
               事件名称
             </div>
@@ -100,35 +108,29 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
                 key={index}
                 className="gantt-label-row"
                 style={{
-                  top: `${headerHeight + index * rowHeight}px`,
                   height: `${rowHeight}px`,
-                  backgroundColor: selectedEvent === event ? '#e8f4fd' : 'transparent'
+                  backgroundColor: selectedEvent === event ? '#e8f4fd' : getEventColor(event).light
                 }}
                 onClick={() => onEventClick?.(event)}
               >
+                <div
+                  className="event-label-color-bar"
+                  style={{ backgroundColor: getEventColor(event).bg }}
+                />
                 <div className="event-label-content">
                   <div className="event-label-name" title={event.name}>
                     {event.name}
                   </div>
                   <div className="event-label-time">
-                    {event.start.toFixed(1)}ms - {(event.start + event.duration).toFixed(1)}ms
+                    {event.start.toFixed(1)}ms - {(event.start + event.duration).toFixed(1)}ms({event.duration.toFixed(1)}ms)
                   </div>
                 </div>
-                {event.category && (
-                  <span
-                    className="event-category-badge"
-                    style={{ backgroundColor: getCategoryColor(event.category) }}
-                  >
-                    {event.category}
-                  </span>
-                )}
               </div>
             ))}
           </div>
 
           {/* 右侧时间轴区域 */}
-          <div className="gantt-timeline-area" style={{ marginLeft: `${labelWidth}px` }}>
-            {/* 时间轴头部 */}
+          <div className="gantt-timeline-area">
             <div className="gantt-timeline-header" style={{ height: `${headerHeight}px` }}>
               {Array.from({ length: timeMarkerCount }, (_, i) => {
                 const time = minStart + (totalDuration * i) / (timeMarkerCount - 1);
@@ -145,8 +147,7 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
               })}
             </div>
 
-            {/* 事件条区域 */}
-            <div className="gantt-events-area">
+            <div className="gantt-events-area" style={{ height: `${eventsAreaHeight}px` }}>
               {/* 背景网格 */}
               {Array.from({ length: timeMarkerCount }, (_, i) => (
                 <div
@@ -177,7 +178,6 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
                 const width = Math.max((event.duration / totalDuration) * 100, 0.3);
                 const isSelected = selectedEvent === event;
 
-                // 计算要显示的文本内容
                 const getDisplayContent = () => {
                   if (width > 5) {
                     return <span className="event-bar-duration">{event.duration.toFixed(1)}ms</span>;
@@ -196,7 +196,7 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
                     style={{
                       top: `${index * rowHeight}px`,
                       height: `${rowHeight}px`,
-                      backgroundColor: isSelected ? '#e8f4fd' : 'transparent'
+                      backgroundColor: isSelected ? '#e8f4fd' : getEventColor(event).light
                     }}
                     onClick={() => onEventClick?.(event)}
                   >
@@ -205,7 +205,7 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
                       style={{
                         left: `${left}%`,
                         width: `${width}%`,
-                        backgroundColor: getCategoryColor(event.category),
+                        backgroundColor: getEventColor(event).bg,
                         boxShadow: isSelected ? '0 0 0 2px var(--cf-orange)' : undefined,
                         opacity: width < 0.5 ? 0.7 : 1
                       }}

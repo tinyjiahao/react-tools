@@ -1,23 +1,23 @@
 .performance-gantt-chart {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid var(--cf-gray-border);
   overflow: hidden;
 }
 
 .gantt-scroll-container {
   overflow: auto;
-  max-height: 600px;
+  height: calc(100vh - 90px);
 }
 
 .gantt-content {
-  position: relative;
+  display: flex;
+  min-width: 100%;
 }
 
 .gantt-labels {
-  position: absolute;
-  top: 0;
-  left: 0;
+  width: 400px;
+  flex-shrink: 0;
   background: white;
   border-right: 1px solid var(--cf-gray-border);
   z-index: 10;
@@ -29,21 +29,29 @@
   padding: 0 16px;
   border-bottom: 1px solid var(--cf-gray-border);
   background: var(--cf-gray-light);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
   color: var(--cf-text-main);
 }
 
 .gantt-label-row {
-  position: absolute;
-  left: 0;
-  right: 0;
   display: flex;
   align-items: center;
   padding: 0 16px;
   border-bottom: 1px solid var(--cf-gray-light);
   cursor: pointer;
   transition: background-color 0.15s;
+  position: relative;
+}
+
+.event-label-color-bar {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .gantt-label-row:hover {
@@ -62,6 +70,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .event-label-time {
@@ -71,15 +80,18 @@
 
 .event-category-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 10px;
   font-size: 11px;
   color: white;
   margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .gantt-timeline-area {
-  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .gantt-timeline-header {
@@ -100,8 +112,9 @@
 .timeline-time {
   font-size: 12px;
   color: var(--cf-text-secondary);
-  margin-top: 8px;
+  margin-top: 10px;
   transform: translateX(-50%);
+  font-weight: 500;
 }
 
 .timeline-line {
@@ -144,10 +157,10 @@
 
 .event-bar {
   position: absolute;
-  height: 32px;
+  height: 36px;
   top: 50%;
   transform: translateY(-50%);
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,19 +168,19 @@
 }
 
 .event-bar-duration {
-  font-size: 12px;
+  font-size: 13px;
   color: white;
   font-weight: 600;
 }
 
 .event-bar-duration-short {
-  font-size: 10px;
+  font-size: 11px;
   color: white;
   font-weight: 600;
 }
 
 .event-bar-duration-tiny {
-  font-size: 8px;
+  font-size: 10px;
   color: white;
   font-weight: 600;
 }

@@ -30,12 +30,13 @@ const PerformanceProfiler = () => {
   const [data, setData] = useState<PerformanceData | null>(null);
   const [error, setError] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<PerformanceEvent | null>(null);
-  const [viewMode, setViewMode] = useState<'gantt' | 'timeline' | 'table'>('gantt');
+  const [viewMode, setViewMode] = useState<'gantt' | 'timeline' | 'table' | 'raw'>('gantt');
   const [showDataDialog, setShowDataDialog] = useState(false);
   const [inputData, setInputData] = useState('');
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const historyDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +118,7 @@ const PerformanceProfiler = () => {
   // 保存到历史记录
   const saveToHistory = (newData: PerformanceData) => {
     const newRecord: HistoryRecord = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       timestamp: Date.now(),
       data: newData
     };
@@ -233,10 +234,9 @@ const PerformanceProfiler = () => {
 
     const times = data.events.map(e => e.start);
     const ends = data.events.map(e => e.start + e.duration);
-    const min = Math.min(...times);
     const maxTime = Math.max(...ends);
 
-    return { min, maxTime, total: maxTime - min };
+    return { min: Math.min(...times), maxTime, total: maxTime - Math.min(...times) };
   };
 
   // 获取分类颜色 - 统一的颜色配置
@@ -302,7 +302,11 @@ const PerformanceProfiler = () => {
   const renderTimelineView = () => {
     if (!data || data.events.length === 0) return null;
 
-    const { min, total } = getTimeRange();
+    const times = data.events.map(e => e.start);
+    const ends = data.events.map(e => e.start + e.duration);
+    const min = Math.min(...times);
+    const maxTime = Math.max(...ends);
+    const total = maxTime - min;
 
     return (
       <div className="timeline-container">
@@ -400,64 +404,89 @@ const PerformanceProfiler = () => {
     );
   };
 
-  // 渲染统计信息
-  const renderStatistics = () => {
-    if (!data || data.events.length === 0) return null;
+  // 生成在线服务性能分析示例数据（含嵌套调用关系）
+  const getOnlineServiceSampleData = (): PerformanceData => {
+    return {
+      title: '电商搜索服务请求链路性能分析',
+      events: [
+        // ===== A. 请求总入口 =====
+        { name: 'A1-请求鉴权与Token校验', start: 0, duration: 5, category: 'A-请求入口' },
+        { name: 'A2-请求参数解析与校验', start: 5, duration: 3, category: 'A-请求入口' },
+        { name: 'A3-AB实验分桶命中', start: 8, duration: 8, category: 'A-请求入口' },
 
-    const totalDuration = data.events.reduce((sum, e) => sum + e.duration, 0);
-    const avgDuration = totalDuration / data.events.length;
-    const maxEvent = data.events.reduce((max, e) => e.duration > max.duration ? e : max, data.events[0]);
-    const categorySet = new Set<string>();
-    data.events.forEach(e => {
-      if (e.category) categorySet.add(e.category);
-    });
-    const categories = Array.from(categorySet);
+        // ===== B. 查询理解 (QU) 阶段 =====
+        { name: 'B1-查询理解总流程', start: 16, duration: 94, category: 'A-请求入口' },
+        { name: 'B1-C1-分词与词性标注', start: 16, duration: 12, category: 'B1-查询理解总流程' },
+        { name: 'B1-C2-意图识别总流程', start: 28, duration: 50, category: 'B1-查询理解总流程' },
+        { name: 'B1-C2-D1-意图分类模型推理', start: 28, duration: 35, category: 'B1-C2-意图识别总流程' },
+        { name: 'B1-C2-D2-意图置信度评估', start: 63, duration: 10, category: 'B1-C2-意图识别总流程' },
+        { name: 'B1-C2-D3-多意图合并与消歧', start: 73, duration: 5, category: 'B1-C2-意图识别总流程' },
+        { name: 'B1-C3-实体识别与NER抽取', start: 28, duration: 28, category: 'B1-查询理解总流程' },
+        { name: 'B1-C4-查询改写总流程', start: 78, duration: 26, category: 'B1-查询理解总流程' },
+        { name: 'B1-C4-D1-拼写纠错', start: 78, duration: 8, category: 'B1-C4-查询改写总流程' },
+        { name: 'B1-C4-D2-同义词扩展', start: 86, duration: 12, category: 'B1-C4-查询改写总流程' },
+        { name: 'B1-C4-D3-查询扩展结果排序', start: 98, duration: 6, category: 'B1-C4-查询改写总流程' },
+        { name: 'B1-C5-地域与商圈信息补全', start: 104, duration: 6, category: 'B1-查询理解总流程' },
 
-    return (
-      <div className="statistics-container compact">
-        <div className="stats-row">
-          <div className="stat-item-inline">
-            <span className="stat-icon">📊</span>
-            <span className="stat-label-inline">事件</span>
-            <span className="stat-value-inline">{data.events.length}</span>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-item-inline">
-            <span className="stat-icon">⏱️</span>
-            <span className="stat-label-inline">总时长</span>
-            <span className="stat-value-inline">{totalDuration.toFixed(1)}ms</span>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-item-inline">
-            <span className="stat-icon">📈</span>
-            <span className="stat-label-inline">平均</span>
-            <span className="stat-value-inline">{avgDuration.toFixed(1)}ms</span>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-item-inline">
-            <span className="stat-icon">🔥</span>
-            <span className="stat-label-inline">最长</span>
-            <span className="stat-value-inline">{maxEvent?.duration.toFixed(1)}ms</span>
-          </div>
-          {categories.length > 0 && (
-            <>
-              <div className="stat-divider" />
-              <div className="stat-categories-inline">
-                {categories.map(cat => (
-                  <span
-                    key={cat}
-                    className="stat-category-tag"
-                    style={{ backgroundColor: getCategoryColor(cat) }}
-                  >
-                    {cat}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
+        // ===== C. 多路召回阶段 (并行) =====
+        { name: 'C1-多路召回总流程', start: 110, duration: 85, category: 'A-请求入口' },
+        { name: 'C1-D1-倒排索引召回', start: 110, duration: 45, category: 'C1-多路召回总流程' },
+        { name: 'C1-D2-向量语义召回', start: 110, duration: 68, category: 'C1-多路召回总流程' },
+        { name: 'C1-D3-个性化协同过滤召回', start: 110, duration: 55, category: 'C1-多路召回总流程' },
+        { name: 'C1-D4-店铺GraphWalk召回', start: 112, duration: 72, category: 'C1-多路召回总流程' },
+        { name: 'C1-D5-广告商品召回', start: 112, duration: 30, category: 'C1-多路召回总流程' },
+        { name: 'C1-D6-运营活动强插召回', start: 115, duration: 8, category: 'C1-多路召回总流程' },
+        { name: 'C1-D7-多路结果合并与去重', start: 184, duration: 11, category: 'C1-多路召回总流程' },
+
+        // ===== D. 排序阶段 =====
+        { name: 'D1-排序总流程', start: 195, duration: 120, category: 'A-请求入口' },
+        { name: 'D1-E1-粗排过滤', start: 195, duration: 22, category: 'D1-排序总流程' },
+        { name: 'D1-E1-F1-销量过滤', start: 195, duration: 6, category: 'D1-E1-粗排过滤' },
+        { name: 'D1-E1-F2-评分过滤', start: 201, duration: 8, category: 'D1-E1-粗排过滤' },
+        { name: 'D1-E1-F3-距离过滤', start: 209, duration: 8, category: 'D1-E1-粗排过滤' },
+        { name: 'D1-E2-特征提取总流程', start: 217, duration: 30, category: 'D1-排序总流程' },
+        { name: 'D1-E2-F1-用户画像特征提取', start: 217, duration: 15, category: 'D1-E2-特征提取总流程' },
+        { name: 'D1-E2-F2-商品基础特征提取', start: 217, duration: 12, category: 'D1-E2-特征提取总流程' },
+        { name: 'D1-E2-F3-上下文场景特征', start: 220, duration: 18, category: 'D1-E2-特征提取总流程' },
+        { name: 'D1-E2-F4-交叉特征计算', start: 232, duration: 15, category: 'D1-E2-特征提取总流程' },
+        { name: 'D1-E3-精排模型推理', start: 247, duration: 55, category: 'D1-排序总流程' },
+        { name: 'D1-E4-广告排序竞价', start: 247, duration: 40, category: 'D1-排序总流程' },
+        { name: 'D1-E5-业务规则调权', start: 302, duration: 8, category: 'D1-排序总流程' },
+
+        // ===== E. 重排策略阶段 =====
+        { name: 'E1-重排策略总流程', start: 315, duration: 38, category: 'A-请求入口' },
+        { name: 'E1-F1-多样性打散(MMR)', start: 315, duration: 12, category: 'E1-重排策略总流程' },
+        { name: 'E1-F2-坑位分配与广告植入', start: 327, duration: 10, category: 'E1-重排策略总流程' },
+        { name: 'E1-F3-运营活动坑位填充', start: 327, duration: 8, category: 'E1-重排策略总流程' },
+        { name: 'E1-F4-地域化重排(同城优先)', start: 337, duration: 6, category: 'E1-重排策略总流程' },
+        { name: 'E1-F5-最终列表截断与分页', start: 343, duration: 10, category: 'E1-重排策略总流程' },
+
+        // ===== F. 详情补全阶段 (并行RPC) =====
+        { name: 'F1-详情补全总流程', start: 353, duration: 50, category: 'A-请求入口' },
+        { name: 'F1-G1-商品基本信息批量查询', start: 353, duration: 35, category: 'F1-详情补全总流程' },
+        { name: 'F1-G2-实时库存与价格查询', start: 353, duration: 42, category: 'F1-详情补全总流程' },
+        { name: 'F1-G3-营销优惠信息查询', start: 355, duration: 28, category: 'F1-详情补全总流程' },
+        { name: 'F1-G4-评价摘要与评分查询', start: 355, duration: 22, category: 'F1-详情补全总流程' },
+        { name: 'F1-G5-店铺信息批量查询', start: 357, duration: 30, category: 'F1-详情补全总流程' },
+        { name: 'F1-G6-图片CDN地址签名生成', start: 387, duration: 8, category: 'F1-详情补全总流程' },
+
+        // ===== G. 组装输出阶段 =====
+        { name: 'G1-组装与输出总流程', start: 403, duration: 17, category: 'A-请求入口' },
+        { name: 'G1-H1-结果DTO组装与序列化', start: 403, duration: 10, category: 'G1-组装与输出总流程' },
+        { name: 'G1-H2-埋点日志异步写入', start: 403, duration: 5, category: 'G1-组装与输出总流程' },
+        { name: 'G1-H3-AB实验指标上报', start: 408, duration: 3, category: 'G1-组装与输出总流程' },
+        { name: 'G1-H4-监控指标采集', start: 408, duration: 2, category: 'G1-组装与输出总流程' },
+        { name: 'G1-H5-响应压缩与返回', start: 413, duration: 7, category: 'G1-组装与输出总流程' },
+      ]
+    };
+  };
+
+  const handleLoadSampleData = () => {
+    const sampleData = getOnlineServiceSampleData();
+    setData(sampleData);
+    localStorage.setItem('performanceData', JSON.stringify(sampleData));
+    setSelectedEvent(null);
+    setShowDataDialog(false);
   };
 
   // 打开数据对话框时清空输入
@@ -509,6 +538,16 @@ const PerformanceProfiler = () => {
                           <span>{record.data.events.length} 个事件</span>
                         </div>
                         <button
+                          className="btn-copy-history"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(JSON.stringify(record.data, null, 2));
+                          }}
+                          title="复制数据"
+                        >
+                          <Icon name="copy" size={14} />
+                        </button>
+                        <button
                           className="btn-delete-history"
                           onClick={(e) => deleteHistoryItem(e, record.id)}
                           title="删除"
@@ -529,6 +568,14 @@ const PerformanceProfiler = () => {
           >
             <Icon name="upload" size={18} />
             加载数据
+          </button>
+          <button
+            className="btn-sample-data"
+            onClick={handleLoadSampleData}
+            title="加载示例数据"
+          >
+            <Icon name="book" size={18} />
+            示例数据
           </button>
         </div>
       </div>
@@ -560,15 +607,34 @@ const PerformanceProfiler = () => {
                 >
                   表格
                 </button>
+                <button
+                  className={viewMode === 'raw' ? 'active' : ''}
+                  onClick={() => setViewMode('raw')}
+                >
+                  原始数据
+                </button>
               </div>
             </div>
-
-            {renderStatistics()}
 
             <div className="charts-container">
               {viewMode === 'gantt' && renderGanttChart()}
               {viewMode === 'timeline' && renderTimelineView()}
               {viewMode === 'table' && renderTableView()}
+              {viewMode === 'raw' && (
+                <div className="raw-data-container">
+                  <div className="raw-data-header">
+                    <span>原始 JSON 数据</span>
+                    <button
+                      className="btn-copy-raw"
+                      onClick={() => navigator.clipboard.writeText(JSON.stringify(data, null, 2))}
+                    >
+                      <Icon name="copy" size={14} />
+                      复制
+                    </button>
+                  </div>
+                  <pre className="raw-data-content">{JSON.stringify(data, null, 2)}</pre>
+                </div>
+              )}
             </div>
 
             {selectedEvent && (
