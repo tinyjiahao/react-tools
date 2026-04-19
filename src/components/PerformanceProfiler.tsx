@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import pako from 'pako';
 import Icon from './Icon';
 import PerformanceGanttChart from './PerformanceGanttChart';
 
@@ -172,10 +173,26 @@ const PerformanceProfiler = () => {
     return `${date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })} ${time}`;
   };
 
+  // 解码 H4 压缩格式（base64 + gzip），复用 Base64Encoder 的解码逻辑
+  const decodeH4Data = (input: string): string => {
+    const base64 = input.slice(2); // 去掉 "H4" 前缀
+    const binaryString = window.atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const decompressed = pako.ungzip(bytes);
+    return new TextDecoder().decode(decompressed);
+  };
+
   // 处理数据加载
   const handleLoadData = () => {
     try {
-      const jsonData = JSON.parse(inputData);
+      let rawJson = inputData.trim();
+      if (rawJson.startsWith('H4')) {
+        rawJson = decodeH4Data(rawJson);
+      }
+      const jsonData = JSON.parse(rawJson);
 
       // 支持多种数据格式
       let processedData: PerformanceData;
