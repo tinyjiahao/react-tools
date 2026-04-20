@@ -177,8 +177,7 @@ const PerformanceProfiler = () => {
 
   // 解码 H4 压缩格式（base64 + gzip），复用 Base64Encoder 的解码逻辑
   const decodeH4Data = (input: string): string => {
-    const base64 = input.slice(2); // 去掉 "H4" 前缀
-    const binaryString = window.atob(base64);
+    const binaryString = window.atob(input);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
