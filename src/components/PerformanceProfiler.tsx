@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import pako from 'pako';
+import html2canvas from 'html2canvas';
 import Icon from './Icon';
 import PerformanceGanttChart from './PerformanceGanttChart';
 
@@ -40,6 +41,7 @@ const PerformanceProfiler = () => {
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const historyDropdownRef = useRef<HTMLDivElement>(null);
+  const ganttContainerRef = useRef<HTMLDivElement>(null);
 
   // 初始化时从 localStorage 加载数据和历史记录
   useEffect(() => {
@@ -288,6 +290,45 @@ const PerformanceProfiler = () => {
     return CATEGORY_COLORS[category];
   };
 
+  // 保存甘特图为图片（展开全部内容后截图）
+  const handleSaveGanttImage = useCallback(async () => {
+    if (!ganttContainerRef.current) return;
+
+    // 需要临时展开的选择器及对应属性
+    const overrides: { el: HTMLElement; props: Record<string, string> }[] = [];
+    const patch = (selector: string, props: Record<string, string>) => {
+      ganttContainerRef.current!.querySelectorAll<HTMLElement>(selector).forEach(el => {
+        overrides.push({ el, props: Object.fromEntries(Object.keys(props).map(k => [k, el.style.getPropertyValue(k)])) });
+        Object.entries(props).forEach(([k, v]) => el.style.setProperty(k, v));
+      });
+    };
+
+    patch('.performance-gantt-chart', { overflow: 'visible' });
+    patch('.gantt-scroll-container', { overflow: 'visible', height: 'auto', 'max-height': 'none' });
+    patch('.gantt-timeline-area', { overflow: 'visible' });
+
+    try {
+      const target = ganttContainerRef.current;
+      const canvas = await html2canvas(target, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        width: target.scrollWidth,
+        height: target.scrollHeight,
+      });
+      const link = document.createElement('a');
+      link.download = `gantt-${data?.title || 'chart'}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } finally {
+      overrides.forEach(({ el, props }) =>
+        Object.entries(props).forEach(([k, v]) => v ? el.style.setProperty(k, v) : el.style.removeProperty(k))
+      );
+    }
+  }, [data]);
+
   // 渲染甘特图
   const renderGanttChart = () => {
     if (!data || data.events.length === 0) return null;
@@ -295,13 +336,17 @@ const PerformanceProfiler = () => {
     const { total } = getTimeRange();
 
     return (
-      <div className="gantt-chart-container">
+      <div className="gantt-chart-container" ref={ganttContainerRef}>
         <div className="gantt-chart-header">
           <h3>甘特图视图</h3>
           <div className="time-info">
             <span className="time-label">总时长:</span>
             <span className="time-value">{total.toFixed(2)}ms</span>
             <span className="event-count">({data.events.length} 个事件)</span>
+            <button className="btn-save-image" onClick={handleSaveGanttImage} title="保存为图片">
+              <Icon name="download" size={16} />
+              保存图片
+            </button>
           </div>
         </div>
 

@@ -140,7 +140,12 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
                     className="timeline-header-marker"
                     style={{ left: `${(i / (timeMarkerCount - 1)) * 100}%` }}
                   >
-                    <div className="timeline-time">{time.toFixed(1)}ms</div>
+                    <div
+                      className="timeline-time"
+                      style={i === timeMarkerCount - 1 ? { transform: 'translateX(-100%)' } : undefined}
+                    >
+                      {time.toFixed(1)}ms
+                    </div>
                     <div className="timeline-line" />
                   </div>
                 );

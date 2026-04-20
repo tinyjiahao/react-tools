@@ -98,6 +98,7 @@
   position: relative;
   border-bottom: 1px solid var(--cf-gray-border);
   background: var(--cf-gray-light);
+  overflow: visible;
 }
 
 .timeline-header-marker {
