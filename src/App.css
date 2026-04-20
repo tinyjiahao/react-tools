@@ -1518,6 +1518,157 @@ body {
   }
 }
 
+/* 时间戳转换 */
+.ts-converter-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--cf-gray-border);
+}
+
+.ts-converter-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cf-text-main);
+  margin-bottom: 14px;
+}
+
+.ts-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ts-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--cf-text-main);
+  background: #fff;
+  outline: none;
+}
+
+.ts-input:focus {
+  border-color: var(--cf-orange);
+}
+
+.btn-ts-convert {
+  padding: 8px 16px;
+  background: var(--cf-orange);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ts-convert:hover {
+  background: var(--cf-orange-dark);
+}
+
+.btn-ts-now {
+  padding: 8px 16px;
+  background: var(--cf-gray-light);
+  color: var(--cf-text-main);
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ts-now:hover {
+  background: var(--cf-gray-border);
+}
+
+.ts-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.ts-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ts-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--cf-gray-border);
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ts-card--wide {
+  grid-column: 1 / -1;
+  min-height: auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.ts-card-label {
+  font-size: 12px;
+  color: var(--cf-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ts-card--wide .ts-card-label {
+  min-width: 70px;
+}
+
+.ts-card-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cf-text-main);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.ts-card--wide .ts-card-value {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ts-card-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cf-text-secondary);
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ts-card:hover .ts-card-copy {
+  opacity: 1;
+}
+
+.ts-card-copy:hover {
+  background: var(--cf-gray-light);
+  color: var(--cf-text-main);
+}
+
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .header-container {
@@ -1911,6 +2062,7 @@ body {
 .history-content {
   flex: 1;
   overflow: hidden;
+  min-width: 0;
   margin-right: 12px;
 }
 

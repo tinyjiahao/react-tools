@@ -273,14 +273,16 @@ const Base64Encoder = () => {
                     setOutput(item.output);
                     setCompression(item.compression);
                   }}
-                  style={{ 
-                    padding: '10px', 
-                    borderBottom: '1px solid #eee', 
+                  style={{
+                    padding: '10px',
+                    borderBottom: '1px solid #eee',
                     cursor: 'pointer',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
-                    backgroundColor: '#fff'
+                    backgroundColor: '#fff',
+                    overflow: 'hidden',
+                    minWidth: 0
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}

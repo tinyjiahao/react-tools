@@ -18,11 +18,43 @@ const unitInfo: Record<ByteUnit, UnitInfo> = {
   'tb': { name: 'terabyte (TB)', multiplier: 8 * 1024 * 1024 * 1024 * 1024 }
 };
 
+interface TsField {
+  label: string;
+  value: string;
+  wide?: boolean;
+  color?: string;
+}
+
+const formatTimestamp = (ts: number): TsField[] | null => {
+  // 自动判断秒级还是毫秒级
+  const ms = ts > 1e12 ? ts : ts * 1000;
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return [
+    { label: '本地时间', value: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`, wide: true, color: '#3b82f6' },
+    { label: '年', value: String(d.getFullYear()), color: '#10b981' },
+    { label: '月', value: String(d.getMonth() + 1), color: '#f59e0b' },
+    { label: '日', value: String(d.getDate()), color: '#8b5cf6' },
+    { label: '时', value: String(d.getHours()), color: '#ef4444' },
+    { label: '分', value: String(d.getMinutes()), color: '#ec4899' },
+    { label: '秒', value: String(d.getSeconds()), color: '#14b8a6' },
+    { label: '星期', value: weekDays[d.getDay()], color: '#f97316' },
+    { label: '毫秒', value: String(d.getMilliseconds()), color: '#06b6d4' },
+    { label: 'UTC 时间', value: d.toUTCString(), wide: true, color: '#6366f1' },
+    { label: 'ISO 8601', value: d.toISOString(), wide: true, color: '#84cc16' },
+  ];
+};
+
 const ByteConverter = () => {
   const [baseBits, setBaseBits] = useState<number | null>(null);
   const [lastEditedUnit, setLastEditedUnit] = useState<ByteUnit | null>(null);
   const [inputValue, setInputValue] = useState<string>('');
   const [showCopyToast, setShowCopyToast] = useState<boolean>(false);
+  const [tsInput, setTsInput] = useState<string>('');
+  const [tsResult, setTsResult] = useState<TsField[] | null>(null);
+  const [tsError, setTsError] = useState<string>('');
 
   // 1 TB in bits for example
   const exampleBits = 8 * 1024 * 1024 * 1024 * 1024;
@@ -73,6 +105,24 @@ const ByteConverter = () => {
     setShowCopyToast(true);
   };
 
+  const handleTsConvert = () => {
+    const raw = tsInput.trim();
+    if (!raw) { setTsError('请输入时间戳'); setTsResult(null); return; }
+    const num = Number(raw);
+    if (isNaN(num) || !isFinite(num)) { setTsError('请输入有效的数字时间戳'); setTsResult(null); return; }
+    const result = formatTimestamp(num);
+    if (!result) { setTsError('时间戳超出有效范围'); setTsResult(null); return; }
+    setTsError('');
+    setTsResult(result);
+  };
+
+  const handleTsNow = () => {
+    const now = Date.now();
+    setTsInput(String(now));
+    setTsError('');
+    setTsResult(formatTimestamp(now));
+  };
+
   return (
     <div className="tool-container">
       <h2>字节转换工具</h2>
@@ -107,6 +157,37 @@ const ByteConverter = () => {
               </div>
             );
           })}
+        </div>
+
+        <div className="ts-converter-section">
+          <h3>时间戳转换</h3>
+          <div className="ts-input-row">
+            <input
+              type="text"
+              className="ts-input"
+              value={tsInput}
+              onChange={(e) => setTsInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTsConvert()}
+              placeholder="输入时间戳（秒或毫秒）"
+            />
+            <button className="btn-ts-convert" onClick={handleTsConvert}>转换</button>
+            <button className="btn-ts-now" onClick={handleTsNow}>当前时间</button>
+          </div>
+          {tsError && <div className="ts-error">{tsError}</div>}
+          {tsResult && (
+            <div className="ts-cards-grid">
+              {tsResult.map((field) => (
+                <div
+                  key={field.label}
+                  className={`ts-card${field.wide ? ' ts-card--wide' : ''}`}
+                  style={{ borderLeftColor: field.color }}
+                >
+                  <div className="ts-card-label">{field.label}</div>
+                  <div className="ts-card-value">{field.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="info-section">
