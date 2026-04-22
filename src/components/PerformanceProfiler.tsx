@@ -38,6 +38,7 @@ const PerformanceProfiler = () => {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [minDuration, setMinDuration] = useState<number>(0);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const historyDropdownRef = useRef<HTMLDivElement>(null);
@@ -333,6 +334,8 @@ const PerformanceProfiler = () => {
     if (!data || data.events.length === 0) return null;
 
     const { total } = getTimeRange();
+    const filteredEvents = data.events.filter(e => e.duration >= minDuration);
+    const DURATION_PRESETS = [0, 1, 5, 10, 20, 50];
 
     return (
       <div className="gantt-chart-container" ref={ganttContainerRef}>
@@ -341,7 +344,7 @@ const PerformanceProfiler = () => {
           <div className="time-info">
             <span className="time-label">总时长:</span>
             <span className="time-value">{total.toFixed(2)}ms</span>
-            <span className="event-count">({data.events.length} 个事件)</span>
+            <span className="event-count">({filteredEvents.length}/{data.events.length} 个事件)</span>
             <button className="btn-save-image" onClick={handleSaveGanttImage} title="保存为图片">
               <Icon name="download" size={16} />
               保存图片
@@ -349,8 +352,30 @@ const PerformanceProfiler = () => {
           </div>
         </div>
 
+        <div className="gantt-filter-bar">
+          <span className="gantt-filter-label">最小时长:</span>
+          {DURATION_PRESETS.map(v => (
+            <button
+              key={v}
+              className={`gantt-filter-btn${minDuration === v ? ' active' : ''}`}
+              onClick={() => setMinDuration(v)}
+            >
+              {v === 0 ? '全部' : `≥${v}ms`}
+            </button>
+          ))}
+          <input
+            type="number"
+            className="gantt-filter-input"
+            value={minDuration}
+            min={0}
+            onChange={e => setMinDuration(Math.max(0, Number(e.target.value)))}
+            title="自定义最小时长(ms)"
+          />
+          <span className="gantt-filter-unit">ms</span>
+        </div>
+
         <PerformanceGanttChart
-          events={data.events}
+          events={filteredEvents}
           categoryColors={CATEGORY_COLORS}
           onEventClick={(event) => setSelectedEvent(selectedEvent === event ? null : event)}
           selectedEvent={selectedEvent}

@@ -4869,6 +4869,58 @@ body {
   color: var(--cf-text-secondary);
 }
 
+.gantt-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--cf-gray-light);
+  border-bottom: 1px solid var(--cf-gray-border);
+  flex-wrap: wrap;
+}
+
+.gantt-filter-label {
+  font-size: 12px;
+  color: var(--cf-text-secondary);
+  white-space: nowrap;
+}
+
+.gantt-filter-btn {
+  padding: 2px 10px;
+  font-size: 12px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 12px;
+  background: white;
+  color: var(--cf-text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gantt-filter-btn:hover {
+  border-color: var(--cf-orange);
+  color: var(--cf-orange);
+}
+
+.gantt-filter-btn.active {
+  background: var(--cf-orange);
+  border-color: var(--cf-orange);
+  color: white;
+}
+
+.gantt-filter-input {
+  width: 60px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.gantt-filter-unit {
+  font-size: 12px;
+  color: var(--cf-text-secondary);
+}
+
 .time-value {
   color: var(--cf-orange);
   font-weight: 600;
