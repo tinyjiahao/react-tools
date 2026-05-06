@@ -327,7 +327,7 @@ function hasRenderableContent(obj: Record<string, unknown>): boolean {
   // 检查 content 或 system 字段是否含 Markdown
   for (const key of ['content', 'system', 'text']) {
     const val = obj[key];
-    if (typeof val === 'string' && /[*#`\[\]\n]/.test(val)) return true;
+    if (typeof val === 'string' && /[*#`[\]\n]/.test(val)) return true;
   }
   return false;
 }
