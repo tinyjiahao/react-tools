@@ -31,9 +31,10 @@ body {
 }
 
 .App {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* 头部样式 */
@@ -749,6 +750,7 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 0;
 }
 
 /* 工具占位符样式 */
@@ -2296,6 +2298,322 @@ body {
   border-radius: 0;
   box-shadow: none;
   width: auto;
+  overflow: visible;
+}
+
+/* 左侧布局：内部容器不裁剪，让内容撑开高度，滚动交给外层 */
+.App.layout-left .tool-container {
+  overflow: visible;
+  flex: none;
+}
+
+.App.layout-left .tool-content {
+  overflow: visible;
+  min-height: auto;
+  flex: none;
+}
+
+.App.layout-left .jsonl-layout {
+  overflow: visible;
+  min-height: auto;
+  flex: none;
+}
+
+.App.layout-left .jsonl-list {
+  overflow-y: visible;
+  max-height: none;
+}
+
+.App.layout-left .jsonl-detail {
+  overflow: visible;
+  min-height: auto;
+  min-width: auto;
+  flex: none;
+}
+
+.App.layout-left .jsonl-detail-panel {
+  overflow: visible;
+  min-height: auto;
+  flex: none;
+}
+
+.App.layout-left .chat-view {
+  overflow: visible;
+  min-height: auto;
+  flex: none;
+}
+
+.App.layout-left .chat-messages {
+  overflow-y: visible;
+  min-height: auto;
+  flex: none;
+}
+
+.App.layout-left .jsonl-detail-messages {
+  flex: none;
+}
+
+.App.layout-left .jsonl-detail-markdown-body {
+  flex: none;
+}
+
+.App.layout-left .jsonl-pre {
+  overflow: visible;
+  flex: none;
+}
+
+.App.layout-left .jsonl-error-detail {
+  overflow: visible;
+  flex: none;
+}
+
+.App.layout-left .chat-message-body {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.App.layout-left .impl-layout {
+  overflow: visible;
+  flex: none;
+}
+
+.App.layout-left .impl-left,
+.App.layout-left .impl-right {
+  flex: none;
+  min-height: auto;
+}
+
+.App.layout-left .impl-render-area {
+  overflow-y: visible;
+}
+
+/* ===== ImplViewer 样式 ===== */
+.impl-layout {
+  flex-direction: row !important;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.impl-left,
+.impl-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.impl-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.impl-panel-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--cf-text-primary);
+}
+
+.impl-panel-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.impl-stats {
+  font-size: 12px;
+  color: var(--cf-text-muted);
+}
+
+.impl-raw-input {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--cf-text-primary);
+  background: #fafbfc;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.impl-raw-input:focus {
+  border-color: var(--cf-orange);
+}
+
+.impl-raw-input::placeholder {
+  color: var(--cf-text-muted);
+}
+
+.impl-render-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.impl-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--cf-text-muted);
+  font-size: 14px;
+}
+
+.impl-placeholder--error {
+  color: #d32f2f;
+}
+
+.impl-render-content {
+  padding: 16px;
+}
+
+.impl-meta {
+  background: var(--cf-gray-light);
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.impl-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.impl-meta-label {
+  font-weight: 600;
+  color: var(--cf-text-secondary);
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+.impl-meta-value {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--cf-text-primary);
+  word-break: break-all;
+}
+
+.impl-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.impl-file-card {
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.impl-file-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--cf-gray-light);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.impl-file-header:hover {
+  background: #e8e8e8;
+}
+
+.impl-action-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.action-create {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.action-modify {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.action-delete {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.impl-file-path {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cf-text-primary);
+  word-break: break-all;
+}
+
+.impl-file-desc {
+  font-size: 12px;
+  color: var(--cf-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.impl-file-body {
+  border-top: 1px solid var(--cf-gray-border);
+}
+
+.impl-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: #f0f0f0;
+  border-bottom: 1px solid var(--cf-gray-border);
+}
+
+.impl-code-lang {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cf-text-muted);
+  text-transform: uppercase;
+}
+
+.impl-code-pre {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  line-height: 1.6;
+  color: var(--cf-text-primary);
+  background: #fafbfc;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.impl-code-pre code {
+  font-family: inherit;
 }
 
 /* R2 文件管理器样式 */
@@ -5467,4 +5785,741 @@ body {
   border-color: var(--cf-orange);
   color: var(--cf-orange);
   font-weight: 500;
+}
+
+/* ===== JSONL Viewer ===== */
+
+.jsonl-upload-area {
+  border: 2px dashed var(--cf-gray-border);
+  border-radius: 8px;
+  padding: 60px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.jsonl-upload-area:hover,
+.jsonl-upload-area.dragging {
+  border-color: var(--cf-orange);
+  background: var(--cf-orange-light);
+}
+
+.jsonl-upload-area .upload-icon {
+  color: var(--cf-text-muted);
+}
+
+.jsonl-upload-area .upload-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--cf-text-primary);
+}
+
+.jsonl-upload-area .upload-subtitle {
+  font-size: 13px;
+  color: var(--cf-text-muted);
+}
+
+.jsonl-file-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--cf-text-secondary);
+  font-weight: 500;
+}
+
+.jsonl-stats {
+  font-size: 13px;
+  color: var(--cf-text-muted);
+}
+
+.jsonl-layout {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-height: 0;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.jsonl-list {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.jsonl-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--cf-gray-border);
+  transition: background 0.15s;
+  min-height: 36px;
+}
+
+.jsonl-list-item:last-child {
+  border-bottom: none;
+}
+
+.jsonl-list-item:hover {
+  background: var(--cf-gray-light);
+}
+
+.jsonl-list-item.selected {
+  background: var(--cf-orange-light);
+  border-left: 3px solid var(--cf-orange);
+  padding-left: 7px;
+}
+
+.jsonl-list-item.error .jsonl-line-preview {
+  color: #d32f2f;
+}
+
+.jsonl-line-number {
+  font-size: 11px;
+  color: var(--cf-text-muted);
+  min-width: 28px;
+  padding-top: 2px;
+  text-align: right;
+  flex-shrink: 0;
+  font-family: monospace;
+}
+
+.jsonl-line-preview {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--cf-text-secondary);
+  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+.jsonl-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* DetailPanel 容器 */
+.jsonl-detail-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* toolbar 内联切换按钮组 */
+.jsonl-detail-tab-group {
+  display: flex;
+  gap: 2px;
+  background: var(--cf-gray-light);
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 5px;
+  padding: 2px;
+}
+
+.jsonl-detail-tab-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cf-text-secondary);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.jsonl-detail-tab-btn:hover {
+  color: var(--cf-text-primary);
+  background: rgba(0,0,0,0.05);
+}
+
+.jsonl-detail-tab-btn.active {
+  color: var(--cf-orange);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* messages 对话渲染区 */
+.jsonl-detail-messages {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 在窄的详情面板里，消息气泡不做缩进，统一左对齐 */
+.jsonl-detail-messages .chat-message--user,
+.jsonl-detail-messages .chat-message--assistant {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* 渲染视图下卡片内容完全展开，不裁剪 */
+.jsonl-detail-messages .chat-message-body,
+.jsonl-detail-markdown-body .chat-message-body {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.jsonl-detail-msg-hint {
+  font-size: 11px;
+  color: var(--cf-text-muted);
+  text-align: center;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  margin-bottom: 4px;
+}
+
+/* content 字段 Markdown 渲染区域 */
+.jsonl-detail-markdown-body {
+  padding: 14px 16px;
+}
+
+.jsonl-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--cf-text-muted);
+  font-size: 14px;
+}
+
+.jsonl-detail-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  background: var(--cf-gray-light);
+  flex-shrink: 0;
+}
+
+.jsonl-detail-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--cf-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jsonl-msg-count {
+  font-size: 11px;
+  color: var(--cf-text-muted);
+  font-weight: normal;
+}
+
+.jsonl-error-badge {
+  background: #fdecea;
+  color: #d32f2f;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.jsonl-valid-badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.jsonl-pre {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  line-height: 1.6;
+  color: var(--cf-text-primary);
+  background: #fafbfc;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* JSON syntax highlight tokens */
+.jsonl-pre--highlighted .json-key    { color: #005cc5; font-weight: 500; }
+.jsonl-pre--highlighted .json-string { color: #22863a; }
+.jsonl-pre--highlighted .json-number { color: #e36209; }
+.jsonl-pre--highlighted .json-boolean{ color: #6f42c1; font-weight: 500; }
+.jsonl-pre--highlighted .json-null   { color: #6a737d; font-style: italic; }
+
+.jsonl-error-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.jsonl-error-detail .jsonl-pre {
+  flex: 1;
+}
+
+.jsonl-error-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fdecea;
+  color: #d32f2f;
+  font-size: 13px;
+  border-bottom: 1px solid #f5c6cb;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ===== Chat / Conversation View ===== */
+
+.chat-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* 覆盖 .tool-content 的 gap，避免压缩 chat-messages 高度 */
+  gap: 0;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.chat-session-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.chat-session-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--cf-text-secondary);
+  transition: border-color 0.15s, background 0.15s;
+  max-width: 200px;
+}
+
+.chat-session-tab:hover {
+  border-color: var(--cf-orange);
+  background: var(--cf-orange-light);
+}
+
+.chat-session-tab.active {
+  border-color: var(--cf-orange);
+  background: var(--cf-orange-light);
+  color: var(--cf-orange);
+}
+
+.chat-session-tab-index {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chat-session-tab-label {
+  font-size: 11px;
+  color: var(--cf-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* 消息气泡 */
+.chat-message {
+  border-radius: 10px;
+  border: 1px solid var(--cf-gray-border);
+  background: #fff;
+  overflow: hidden;
+}
+
+.chat-message--system {
+  border-color: #e3e8f0;
+  background: #f8f9fc;
+  opacity: 0.9;
+}
+
+.chat-message--user {
+  border-color: #c8e6c9;
+  background: #f1f8f1;
+  margin-left: 60px;
+}
+
+.chat-message--assistant {
+  border-color: #e3f2fd;
+  background: #fff;
+  margin-right: 60px;
+}
+
+.chat-message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  background: rgba(0,0,0,0.02);
+}
+
+.chat-message--user .chat-message-header {
+  background: rgba(76, 175, 80, 0.06);
+  border-bottom-color: #c8e6c9;
+}
+
+.chat-message--assistant .chat-message-header {
+  background: rgba(25, 118, 210, 0.04);
+  border-bottom-color: #bbdefb;
+}
+
+.chat-role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.role-system {
+  background: #e8eaf6;
+  color: #3949ab;
+}
+
+.role-user {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.role-assistant {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.chat-timestamp {
+  font-size: 11px;
+  color: var(--cf-text-muted);
+  flex: 1;
+}
+
+.chat-message-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.chat-message:hover .chat-message-actions {
+  opacity: 1;
+}
+
+.chat-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--cf-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.chat-action-btn:hover {
+  border-color: var(--cf-orange);
+  color: var(--cf-orange);
+}
+
+.chat-message-body {
+  padding: 14px 16px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.chat-message-body--system {
+  padding: 14px 16px;
+}
+
+/* system 折叠摘要行 */
+.chat-system-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  padding: 10px 16px;
+  user-select: none;
+}
+
+.chat-system-summary-text {
+  font-size: 13px;
+  color: var(--cf-text-secondary);
+  font-style: italic;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-system-expand-hint {
+  font-size: 11px;
+  color: var(--cf-orange);
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.chat-system-summary:hover .chat-system-expand-hint {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.chat-plain-text {
+  font-size: 14px;
+  color: var(--cf-text-primary);
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Markdown 内容样式 */
+.chat-markdown {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--cf-text-primary);
+  word-break: break-word;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4,
+.chat-markdown h5 {
+  margin: 1em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cf-text-primary);
+}
+
+.chat-markdown h2 {
+  font-size: 17px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  padding-bottom: 6px;
+}
+
+.chat-markdown h3 {
+  font-size: 15px;
+}
+
+.chat-markdown h4 {
+  font-size: 14px;
+}
+
+.chat-markdown p {
+  margin: 0.6em 0;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.6em;
+  margin: 0.5em 0;
+}
+
+.chat-markdown li {
+  margin: 0.3em 0;
+}
+
+.chat-markdown blockquote {
+  border-left: 3px solid var(--cf-orange);
+  margin: 0.8em 0;
+  padding: 6px 12px;
+  background: var(--cf-orange-light);
+  color: var(--cf-text-secondary);
+  border-radius: 0 4px 4px 0;
+}
+
+.chat-markdown code:not(pre code) {
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #c0392b;
+}
+
+/* 自定义代码块容器（替换 rehype-highlight 默认 pre） */
+.chat-code-block {
+  margin: 0.8em 0;
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 12px;
+  background: #2d333b;
+  border-bottom: 1px solid #444c56;
+}
+
+.chat-code-lang {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #8b949e;
+  text-transform: lowercase;
+  letter-spacing: 0.4px;
+}
+
+.chat-code-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #8b949e;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.chat-code-copy:hover {
+  color: #e6edf3;
+  background: rgba(255,255,255,0.08);
+}
+
+.chat-code-pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  background: #161b22;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.chat-code-pre code {
+  background: none;
+  padding: 0;
+  color: #e6edf3;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* 兼容：原生 pre（无自定义组件时的回退） */
+.chat-markdown > pre {
+  margin: 0.8em 0;
+  border-radius: 6px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-markdown > pre code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+.chat-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  font-size: 13px;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  border: 1px solid var(--cf-gray-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.chat-markdown th {
+  background: var(--cf-gray-light);
+  font-weight: 600;
+}
+
+.chat-markdown tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+.chat-markdown a {
+  color: var(--cf-blue);
+  text-decoration: none;
+}
+
+.chat-markdown a:hover {
+  text-decoration: underline;
+}
+
+.chat-markdown strong {
+  font-weight: 600;
+  color: var(--cf-text-primary);
+}
+
+.chat-markdown hr {
+  border: none;
+  border-top: 1px solid var(--cf-gray-border);
+  margin: 1em 0;
 }

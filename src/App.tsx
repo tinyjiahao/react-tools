@@ -12,11 +12,13 @@ import R2ImageManager from './components/R2ImageManager';
 import NotesManager from './components/NotesManager';
 import KnowledgeManager from './components/KnowledgeManager';
 import PerformanceProfiler from './components/PerformanceProfiler';
+import JsonlViewer from './components/JsonlViewer';
+import ImplViewer from './components/ImplViewer';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance' | 'jsonl-viewer' | 'impl-viewer';
 
 // 定义工具分类
 interface ToolCategory {
@@ -34,7 +36,9 @@ const toolCategories: ToolCategory[] = [
     name: 'JSON工具',
     icon: 'json',
     tools: [
-      { id: 'json', name: 'JSON格式化', description: 'JSON数据格式化和验证' }
+      { id: 'json', name: 'JSON格式化', description: 'JSON数据格式化和验证' },
+      { id: 'jsonl-viewer', name: 'JSONL查看器', description: '逐行查看JSONL文件内容' },
+      { id: 'impl-viewer', name: 'IMPL查看器', description: '解析IMPL_JSON代码实现方案' }
     ]
   },
   {
@@ -93,7 +97,9 @@ const toolIdToPath: Record<ToolType, string> = {
   'r2-image-manager': 'r2-image-manager',
   'notes': 'notes',
   'knowledge': 'knowledge',
-  'performance': 'performance'
+  'performance': 'performance',
+  'jsonl-viewer': 'jsonl-viewer',
+  'impl-viewer': 'impl-viewer'
 };
 
 // URL路径到工具ID的映射
@@ -109,7 +115,9 @@ const pathToToolId: Record<string, ToolType> = {
   'r2-image-manager': 'r2-image-manager',
   'notes': 'notes',
   'knowledge': 'knowledge',
-  'performance': 'performance'
+  'performance': 'performance',
+  'jsonl-viewer': 'jsonl-viewer',
+  'impl-viewer': 'impl-viewer'
 };
 
 function App() {
@@ -303,6 +311,8 @@ function App() {
           {activeTool === 'notes' && <NotesManager />}
           {activeTool === 'knowledge' && <KnowledgeManager />}
           {activeTool === 'performance' && <PerformanceProfiler />}
+          {activeTool === 'jsonl-viewer' && <JsonlViewer />}
+          {activeTool === 'impl-viewer' && <ImplViewer />}
         </div>
       </main>
 

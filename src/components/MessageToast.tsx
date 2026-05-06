@@ -20,8 +20,10 @@ const MessageToast: React.FC<MessageToastProps> = ({
       const timer = setTimeout(() => {
         setVisible(false);
       }, duration);
-
       return () => clearTimeout(timer);
+    } else {
+      // show 变为 false 时立即隐藏
+      setVisible(false);
     }
   }, [show, duration]);
 
