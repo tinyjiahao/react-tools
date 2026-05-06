@@ -2616,6 +2616,143 @@ body {
   font-family: inherit;
 }
 
+/* ===== SseViewer 样式 ===== */
+.sse-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sse-text-block {
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.sse-tool-card {
+  border: 1px solid #bbdefb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sse-tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #e3f2fd;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.sse-tool-header:hover {
+  background: #bbdefb;
+}
+
+.sse-tool-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #1565c0;
+  color: #fff;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.sse-tool-name {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1565c0;
+  flex-shrink: 0;
+}
+
+.sse-tool-path {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--cf-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sse-tool-body {
+  border-top: 1px solid #bbdefb;
+}
+
+.sse-code-pre {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  line-height: 1.6;
+  color: var(--cf-text-primary);
+  background: #fafbfc;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.sse-thinking-card {
+  border: 1px solid #e1bee7;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sse-thinking-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f3e5f5;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.sse-thinking-header:hover {
+  background: #e1bee7;
+}
+
+.sse-thinking-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #7b1fa2;
+  color: #fff;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.sse-thinking-preview {
+  font-size: 12px;
+  color: var(--cf-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.sse-thinking-body {
+  border-top: 1px solid #e1bee7;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--cf-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-style: italic;
+}
+
+.App.layout-left .sse-block-list {
+  overflow: visible;
+}
+
 /* R2 文件管理器样式 */
 .r2-header {
   display: flex;
@@ -6296,6 +6433,137 @@ body {
 
 .chat-message-body--system {
   padding: 14px 16px;
+}
+
+/* tool_use 渲染 */
+.chat-tool-use {
+  margin: 8px 0;
+  border: 1px solid #bbdefb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chat-tool-use-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #e3f2fd;
+}
+
+.chat-tool-use-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #1565c0;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.chat-tool-use-name {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1565c0;
+}
+
+.chat-tool-use-input {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  line-height: 1.5;
+  color: var(--cf-text-primary);
+  background: #fafbfc;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* tool_result 渲染 */
+.chat-tool-result {
+  margin: 8px 0;
+  border: 1px solid #c8e6c9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chat-tool-result--error {
+  border-color: #f5c6cb;
+}
+
+.chat-tool-result-header {
+  padding: 4px 12px;
+  background: #e8f5e9;
+}
+
+.chat-tool-result--error .chat-tool-result-header {
+  background: #fdecea;
+}
+
+.chat-tool-result-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #2e7d32;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.chat-tool-result--error .chat-tool-result-badge {
+  background: #c62828;
+}
+
+.chat-tool-result-content {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  line-height: 1.5;
+  color: var(--cf-text-primary);
+  background: #fafbfc;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+/* thinking 渲染 */
+.chat-thinking {
+  margin: 8px 0;
+  border: 1px solid #e1bee7;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chat-thinking-summary {
+  padding: 6px 12px;
+  background: #f3e5f5;
+  font-size: 12px;
+  color: #7b1fa2;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
+
+.chat-thinking-body {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--cf-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-style: italic;
+  background: #fafbfc;
+}
+
+.chat-image-placeholder {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--cf-text-muted);
 }
 
 /* system 折叠摘要行 */

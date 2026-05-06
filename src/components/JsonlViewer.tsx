@@ -31,10 +31,25 @@ function highlightJson(json: string): string {
     );
 }
 
+interface ContentPart {
+  type: 'text' | 'tool_use' | 'tool_result' | 'thinking' | 'image';
+  // text
+  text?: string;
+  // tool_use
+  toolId?: string;
+  toolName?: string;
+  toolInput?: Record<string, unknown>;
+  // tool_result
+  toolUseId?: string;
+  resultContent?: string;
+  isError?: boolean;
+}
+
 interface ConversationMessage {
   ts: string;
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string; // 向后兼容纯文本
+  parts?: ContentPart[]; // 结构化内容
 }
 
 // 判断是否是对话格式（每行都有 role + content）
@@ -148,6 +163,63 @@ const MarkdownContent: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
+// 渲染单个 ContentPart
+const ContentPartRender: React.FC<{
+  part: ContentPart;
+}> = ({ part }) => {
+  if (part.type === 'text' && part.text) {
+    return <MarkdownContent content={part.text} />;
+  }
+
+  if (part.type === 'tool_use') {
+    return (
+      <div className="chat-tool-use">
+        <div className="chat-tool-use-header">
+          <span className="chat-tool-use-badge">Tool</span>
+          <span className="chat-tool-use-name">{part.toolName}</span>
+        </div>
+        {part.toolInput && Object.keys(part.toolInput).length > 0 && (
+          <pre className="chat-tool-use-input">
+            <code>{JSON.stringify(part.toolInput, null, 2)}</code>
+          </pre>
+        )}
+      </div>
+    );
+  }
+
+  if (part.type === 'tool_result') {
+    return (
+      <div className={`chat-tool-result${part.isError ? ' chat-tool-result--error' : ''}`}>
+        <div className="chat-tool-result-header">
+          <span className="chat-tool-result-badge">{part.isError ? 'Error' : 'Result'}</span>
+        </div>
+        {part.resultContent && (
+          <pre className="chat-tool-result-content">
+            <code>{part.resultContent.length > 2000
+              ? part.resultContent.slice(0, 2000) + '\n... (truncated)'
+              : part.resultContent}</code>
+          </pre>
+        )}
+      </div>
+    );
+  }
+
+  if (part.type === 'thinking' && part.text) {
+    return (
+      <details className="chat-thinking">
+        <summary className="chat-thinking-summary">Thinking...</summary>
+        <div className="chat-thinking-body">{part.text}</div>
+      </details>
+    );
+  }
+
+  if (part.type === 'image') {
+    return <div className="chat-image-placeholder">[图片]</div>;
+  }
+
+  return null;
+};
+
 // 单条消息气泡
 const MessageBubble: React.FC<{
   msg: ConversationMessage;
@@ -155,6 +227,7 @@ const MessageBubble: React.FC<{
   onCopy: (text: string) => void;
 }> = ({ msg, onCopy }) => {
   const isSystem = msg.role === 'system';
+  const hasParts = msg.parts && msg.parts.length > 0;
 
   return (
     <div className={`chat-message chat-message--${msg.role}`}>
@@ -177,7 +250,13 @@ const MessageBubble: React.FC<{
       </div>
 
       <div className={`chat-message-body${isSystem ? ' chat-message-body--system' : ''}`}>
-        <MarkdownContent content={msg.content} />
+        {hasParts ? (
+          msg.parts!.map((part, idx) => (
+            <ContentPartRender key={idx} part={part} />
+          ))
+        ) : (
+          <MarkdownContent content={msg.content} />
+        )}
       </div>
     </div>
   );
@@ -274,6 +353,24 @@ function contentToString(content: unknown): string {
         if (part && typeof part === 'object') {
           const p = part as Record<string, unknown>;
           if (p['type'] === 'text' && typeof p['text'] === 'string') return p['text'];
+          if (p['type'] === 'tool_use') {
+            const name = p['name'] || '';
+            const input = p['input'];
+            return `[Tool: ${name}] ${typeof input === 'object' ? JSON.stringify(input, null, 2) : String(input || '')}`;
+          }
+          if (p['type'] === 'tool_result') {
+            const rc = p['content'];
+            if (typeof rc === 'string') return `[Result] ${rc}`;
+            if (Array.isArray(rc)) {
+              return rc.map((c: Record<string, unknown>) =>
+                c['type'] === 'text' ? String(c['text'] || '') : ''
+              ).join('\n');
+            }
+            return '[Result]';
+          }
+          if (p['type'] === 'thinking' && typeof p['thinking'] === 'string') {
+            return `[Thinking] ${p['thinking']}`;
+          }
           if (p['type'] === 'image_url') return '[图片]';
           if (p['type'] === 'image') return '[图片]';
         }
@@ -283,6 +380,58 @@ function contentToString(content: unknown): string {
       .trim();
   }
   return '';
+}
+
+// 将 content 数组解析为结构化的 ContentPart 列表
+function contentToParts(content: unknown): ContentPart[] | undefined {
+  if (!Array.isArray(content)) return undefined;
+  if (content.length === 0) return undefined;
+
+  const parts: ContentPart[] = [];
+  for (const part of content) {
+    if (typeof part === 'string') {
+      if (part.trim()) parts.push({ type: 'text', text: part });
+      continue;
+    }
+    if (!part || typeof part !== 'object') continue;
+    const p = part as Record<string, unknown>;
+
+    if (p['type'] === 'text' && typeof p['text'] === 'string') {
+      if (p['text'].trim()) parts.push({ type: 'text', text: p['text'] });
+    } else if (p['type'] === 'tool_use') {
+      parts.push({
+        type: 'tool_use',
+        toolId: String(p['id'] || ''),
+        toolName: String(p['name'] || ''),
+        toolInput: (p['input'] as Record<string, unknown>) || {},
+      });
+    } else if (p['type'] === 'tool_result') {
+      let resultContent = '';
+      const rc = p['content'];
+      if (typeof rc === 'string') {
+        resultContent = rc;
+      } else if (Array.isArray(rc)) {
+        resultContent = rc.map((c: Record<string, unknown>) => {
+          if (c['type'] === 'text') return String(c['text'] || '');
+          return '';
+        }).join('\n').trim();
+      }
+      parts.push({
+        type: 'tool_result',
+        toolUseId: String(p['tool_use_id'] || ''),
+        resultContent,
+        isError: p['is_error'] === true,
+      });
+    } else if (p['type'] === 'thinking') {
+      parts.push({
+        type: 'thinking',
+        text: String(p['thinking'] || ''),
+      });
+    } else if (p['type'] === 'image_url' || p['type'] === 'image') {
+      parts.push({ type: 'image' });
+    }
+  }
+  return parts.length > 0 ? parts : undefined;
 }
 
 // 检测是否是 OpenAI messages 格式（单行含 messages 数组）
@@ -308,13 +457,24 @@ function extractMessages(obj: Record<string, unknown>): ConversationMessage[] | 
   const systemField = obj['system'];
   if (typeof systemField === 'string' && systemField.trim()) {
     result.push({ ts: (obj['ts'] as string) || '', role: 'system', content: systemField });
+  } else if (Array.isArray(systemField)) {
+    const sysText = systemField
+      .filter((p: Record<string, unknown>) => p['type'] === 'text' && typeof p['text'] === 'string')
+      .map((p: Record<string, unknown>) => p['text'])
+      .join('\n')
+      .trim();
+    if (sysText) {
+      result.push({ ts: (obj['ts'] as string) || '', role: 'system', content: sysText, parts: contentToParts(systemField) });
+    }
   }
 
   for (const m of msgs as Record<string, unknown>[]) {
+    const content = m['content'];
     result.push({
       ts: (obj['ts'] as string) || '',
       role: (m['role'] as ConversationMessage['role']) || 'user',
-      content: contentToString(m['content']),
+      content: contentToString(content),
+      parts: contentToParts(content),
     });
   }
 
