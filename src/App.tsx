@@ -15,11 +15,12 @@ import PerformanceProfiler from './components/PerformanceProfiler';
 import JsonlViewer from './components/JsonlViewer';
 import ImplViewer from './components/ImplViewer';
 import SseViewer from './components/SseViewer';
+import CurlBuilder from './components/CurlBuilder';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer' | 'curl-builder';
 
 // 定义工具分类
 interface ToolCategory {
@@ -57,7 +58,8 @@ const toolCategories: ToolCategory[] = [
     icon: 'url',
     tools: [
       { id: 'qr', name: 'URL转二维码', description: '生成二维码' },
-      { id: 'url-encoder', name: 'URL编解码', description: 'URL编码和解码' }
+      { id: 'url-encoder', name: 'URL编解码', description: 'URL编码和解码' },
+      { id: 'curl-builder', name: 'cURL构建器', description: '根据URL/Params/Headers生成cURL命令' }
     ]
   },
   {
@@ -102,7 +104,8 @@ const toolIdToPath: Record<ToolType, string> = {
   'performance': 'performance',
   'jsonl-viewer': 'jsonl-viewer',
   'impl-viewer': 'impl-viewer',
-  'sse-viewer': 'sse-viewer'
+  'sse-viewer': 'sse-viewer',
+  'curl-builder': 'curl-builder'
 };
 
 // URL路径到工具ID的映射
@@ -121,7 +124,8 @@ const pathToToolId: Record<string, ToolType> = {
   'performance': 'performance',
   'jsonl-viewer': 'jsonl-viewer',
   'impl-viewer': 'impl-viewer',
-  'sse-viewer': 'sse-viewer'
+  'sse-viewer': 'sse-viewer',
+  'curl-builder': 'curl-builder'
 };
 
 function App() {
@@ -318,6 +322,7 @@ function App() {
           {activeTool === 'jsonl-viewer' && <JsonlViewer />}
           {activeTool === 'impl-viewer' && <ImplViewer />}
           {activeTool === 'sse-viewer' && <SseViewer />}
+          {activeTool === 'curl-builder' && <CurlBuilder />}
         </div>
       </main>
 
