@@ -24,8 +24,9 @@ const R2FileManager = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [directories, setDirectories] = useState<DirectoryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<{ file: File; progress: number; status: 'pending' | 'uploading' | 'success' | 'error'; error?: string }[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState('');
@@ -233,25 +234,15 @@ const R2FileManager = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDirectory]);
 
-  // 上传文件
-  const uploadToR2 = async () => {
-    if (!uploadFile) return;
-    if (!config.workerUrl) {
-      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setUploadProgress(0);
-
-    try {
+  // 上传单个文件
+  const uploadSingleFile = (file: File, queueIndex: number): Promise<void> => {
+    return new Promise((resolve, reject) => {
       const formData = new FormData();
-      formData.append('file', uploadFile);
+      formData.append('file', file);
 
       // 构建完整路径（目录 + 文件名）
       const directory = uploadDirectory.trim();
-      const fileName = uploadFile.name;
+      const fileName = file.name;
       const fullPath = directory ? `${directory}/${fileName}` : fileName;
 
       formData.append('path', fullPath);
@@ -261,41 +252,101 @@ const R2FileManager = () => {
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete);
+          setUploadQueue(prev => prev.map((item, idx) =>
+            idx === queueIndex ? { ...item, progress: percentComplete } : item
+          ));
         }
       });
 
       xhr.addEventListener('load', () => {
         if (xhr.status === 200) {
-          setUploadFile(null);
-          setUploadProgress(0);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          listFiles(currentDirectory);
-          setShowCopyToast(true);
+          setUploadQueue(prev => prev.map((item, idx) =>
+            idx === queueIndex ? { ...item, status: 'success', progress: 100 } : item
+          ));
+          resolve();
         } else {
+          let errorMsg = '上传失败';
           try {
             const errorData = JSON.parse(xhr.responseText);
-            setError(errorData.error || '上传失败');
+            errorMsg = errorData.error || '上传失败';
           } catch {
-            setError('上传失败');
+            // ignore
           }
+          setUploadQueue(prev => prev.map((item, idx) =>
+            idx === queueIndex ? { ...item, status: 'error', error: errorMsg } : item
+          ));
+          reject(new Error(errorMsg));
         }
-        setLoading(false);
       });
 
       xhr.addEventListener('error', () => {
-        setError('上传失败，请检查网络连接');
-        setLoading(false);
+        const errorMsg = '上传失败，请检查网络连接';
+        setUploadQueue(prev => prev.map((item, idx) =>
+          idx === queueIndex ? { ...item, status: 'error', error: errorMsg } : item
+        ));
+        reject(new Error(errorMsg));
       });
 
       xhr.open('POST', `${config.workerUrl}?action=upload&authorization=${encodeURIComponent(config.apiToken)}`);
       xhr.send(formData);
-    } catch (err) {
-      setError((err as Error).message);
-      setLoading(false);
+    });
+  };
+
+  // 上传文件（批量）
+  const uploadToR2 = async () => {
+    if (uploadFiles.length === 0) return;
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
     }
+
+    setIsUploading(true);
+    setError('');
+
+    // 初始化上传队列
+    const initialQueue = uploadFiles.map(file => ({
+      file,
+      progress: 0,
+      status: 'pending' as const
+    }));
+    setUploadQueue(initialQueue);
+
+    // 串行上传每个文件
+    for (let i = 0; i < initialQueue.length; i++) {
+      setUploadQueue(prev => prev.map((item, idx) =>
+        idx === i ? { ...item, status: 'uploading' as const } : item
+      ));
+
+      try {
+        await uploadSingleFile(initialQueue[i].file, i);
+      } catch (err) {
+        // 单个文件失败不影响其他文件继续上传
+        console.error(`文件 ${initialQueue[i].file.name} 上传失败:`, err);
+      }
+    }
+
+    // 上传完成后刷新文件列表
+    setTimeout(() => {
+      listFiles(currentDirectory);
+      setIsUploading(false);
+      // 检查是否有文件上传失败
+      const failedFiles = uploadQueue.filter(item => item.status === 'error');
+      const successCount = uploadQueue.filter(item => item.status === 'success').length;
+
+      if (failedFiles.length > 0) {
+        setError(`部分文件上传失败：${successCount}/${uploadFiles.length} 成功`);
+      } else {
+        setCopiedUrl(`成功上传 ${uploadFiles.length} 个文件！`);
+        setShowCopyToast(true);
+      }
+
+      // 清空上传队列和文件列表
+      setUploadFiles([]);
+      setUploadQueue([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }, 500);
   };
 
   // 删除文件
@@ -657,17 +708,16 @@ const R2FileManager = () => {
     e.stopPropagation();
     setIsDragging(false);
 
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      setUploadFile(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      setUploadFiles(files);
       setError('');
     }
   };
 
   // 点击上传区域触发文件选择
   const handleUploadAreaClick = () => {
-    if (!uploadFile && fileInputRef.current) {
+    if (uploadFiles.length === 0 && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
@@ -966,13 +1016,15 @@ const R2FileManager = () => {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
                     className="file-input"
+                    multiple
                   />
-                  {!uploadFile ? (
+                  {uploadFiles.length === 0 ? (
                     <div className="upload-prompt">
                       <Icon name="upload" size={48} className="upload-icon" />
                       <p>拖拽文件到此处，或点击选择文件</p>
+                      <p className="upload-hint">支持多文件上传</p>
                       {uploadDirectory && (
                         <p className="directory-preview">
                           将上传到: <strong>{uploadDirectory}</strong>
@@ -980,43 +1032,73 @@ const R2FileManager = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="selected-file">
-                      <Icon name={getFileIconName(uploadFile.name)} size={18} />
-                      <div className="selected-file-info">
-                        <span className="selected-file-name">{uploadFile.name}</span>
-                        {uploadDirectory && (
-                          <span className="selected-file-path">→ {uploadDirectory}/</span>
-                        )}
-                        <span className="file-size">({formatSize(uploadFile.size)})</span>
-                      </div>
-                      <button className="btn-close" onClick={() => {
-                        setUploadFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}>×</button>
+                    <div className="selected-files-list">
+                      {uploadFiles.map((file, index) => {
+                        const queueItem = uploadQueue[index];
+                        const progress = queueItem?.progress || 0;
+                        const status = queueItem?.status || 'pending';
+
+                        return (
+                          <div key={index} className={`selected-file ${status}`}>
+                            <Icon name={getFileIconName(file.name)} size={18} />
+                            <div className="selected-file-info">
+                              <span className="selected-file-name">{file.name}</span>
+                              {uploadDirectory && (
+                                <span className="selected-file-path">→ {uploadDirectory}/</span>
+                              )}
+                              <span className="file-size">({formatSize(file.size)})</span>
+                              {status === 'uploading' && progress > 0 && (
+                                <span className="file-progress">{progress}%</span>
+                              )}
+                              {status === 'success' && (
+                                <span className="file-success">✓ 上传成功</span>
+                              )}
+                              {status === 'error' && (
+                                <span className="file-error" title={queueItem?.error}>✗ 上传失败</span>
+                              )}
+                            </div>
+                            {!isUploading && (
+                              <button
+                                className="btn-close"
+                                onClick={() => {
+                                  setUploadFiles(uploadFiles.filter((_, i) => i !== index));
+                                  if (fileInputRef.current) {
+                                    fileInputRef.current.value = '';
+                                  }
+                                }}
+                              >×</button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-                {uploadFile && uploadProgress > 0 && (
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
-                    <span className="progress-text">{uploadProgress}%</span>
-                  </div>
-                )}
               </div>
 
               <div className="upload-dialog-footer">
                 <button
                   className="btn"
-                  onClick={() => setShowUploadDialog(false)}
+                  onClick={() => {
+                    if (!isUploading) {
+                      setShowUploadDialog(false);
+                      setUploadFiles([]);
+                      setUploadQueue([]);
+                    }
+                  }}
+                  disabled={isUploading}
                 >
                   取消
                 </button>
                 <button
                   className="btn btn-primary"
                   onClick={uploadToR2}
-                  disabled={!uploadFile || loading}
+                  disabled={uploadFiles.length === 0 || isUploading}
                 >
-                  {loading ? '上传中...' : '开始上传'}
+                  {isUploading
+                    ? `上传中... (${uploadQueue.filter(q => q.status === 'success').length}/${uploadFiles.length})`
+                    : `开始上传 (${uploadFiles.length} 个文件)`
+                  }
                 </button>
               </div>
             </div>

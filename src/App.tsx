@@ -136,6 +136,15 @@ function App() {
     return (localStorage.getItem('layoutMode') as 'top' | 'left') || 'top';
   });
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
+
+  // 应用深色/浅色主题
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('darkMode', String(darkMode));
+  }, [darkMode]);
 
   // 应用主题颜色
   useEffect(() => {
@@ -287,6 +296,13 @@ function App() {
           </div>
           <div className="header-right">
             <div className="header-actions">
+              <button
+                className="btn-icon"
+                onClick={() => setDarkMode(!darkMode)}
+                title={darkMode ? "切换到浅色模式" : "切换到深色模式"}
+              >
+                <Icon name={darkMode ? 'sun' : 'moon'} size={20} />
+              </button>
               <button
                 className="btn-icon"
                 onClick={() => setLayoutMode(layoutMode === 'top' ? 'left' : 'top')}

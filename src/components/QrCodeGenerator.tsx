@@ -87,11 +87,7 @@ const QrCodeGenerator = () => {
       return;
     }
 
-    // 验证URL长度
-    if (url.length > 2000) {
-      setError('URL过长，无法生成二维码。建议使用URL缩短服务。');
-      return;
-    }
+    if (isUrlTooLong) return;
 
     addToHistory(url);
   };
@@ -112,8 +108,8 @@ const QrCodeGenerator = () => {
     }
   };
 
-  // 检查URL是否过长
-  const isUrlTooLong = url.length > 2000;
+  // QR Code 数据容量上限（level L 字节模式约 2953 字节）
+  const isUrlTooLong = new TextEncoder().encode(url).length > 2953;
 
   return (
     <div className="tool-container">
@@ -136,10 +132,16 @@ const QrCodeGenerator = () => {
                   {error}
                 </div>
               )}
-              {url.length > 1000 && !error && (
+              {url.length > 1500 && !isUrlTooLong && !error && (
                 <div className="warning-message">
                   <Icon name="warning" size={18} className="warning-icon" />
-                  URL较长 ({url.length} 字符)，可能无法生成二维码
+                  URL较长 ({url.length} 字符)，二维码扫描难度会增加
+                </div>
+              )}
+              {isUrlTooLong && (
+                <div className="error-message">
+                  <Icon name="warning" size={18} className="error-icon" />
+                  URL超出二维码最大容量（当前 {new TextEncoder().encode(url).length} 字节，上限 2953 字节），建议使用短链服务
                 </div>
               )}
             </div>
@@ -212,8 +214,8 @@ const QrCodeGenerator = () => {
                 size={size}
                 bgColor={bgColor}
                 fgColor={fgColor}
-                includeMargin={includeMargin}
-                level="H" // 容错级别
+                marginSize={includeMargin ? 4 : 0}
+                level="L"
               />
             ) : (
               <div className="error-state">
