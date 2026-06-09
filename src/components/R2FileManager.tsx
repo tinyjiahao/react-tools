@@ -30,7 +30,7 @@ const R2FileManager = () => {
   const [error, setError] = useState('');
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState('');
-  const [previewFile, setPreviewFile] = useState<{ name: string; content: string; type: 'text' | 'image' } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ name: string; content: string; type: 'text' | 'image' | 'html' | 'pdf' } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renamingFile, setRenamingFile] = useState<string>('');
@@ -42,6 +42,7 @@ const R2FileManager = () => {
   const [showDirInput, setShowDirInput] = useState(false);
   const [currentDirectory, setCurrentDirectory] = useState('');
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [previewPanelVisible, setPreviewPanelVisible] = useState(false);
 
   // 调用 Workers API
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -512,9 +513,9 @@ const R2FileManager = () => {
         throw new Error(`下载失败 (${response.status})`);
       }
 
-      // 获取文件名
+      // 获取文件名（从key中提取纯文件名，去掉目录前缀）
       const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = key;
+      let filename = key.includes('/') ? key.substring(key.lastIndexOf('/') + 1) : key;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch && filenameMatch[1]) {
@@ -581,13 +582,25 @@ const R2FileManager = () => {
   const isTextFile = (filename: string): boolean => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const textExtensions = [
-      'txt', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
+      'txt', 'json', 'js', 'ts', 'jsx', 'tsx', 'css', 'scss', 'less',
       'md', 'markdown', 'xml', 'yaml', 'yml', 'toml', 'ini', 'conf', 'config',
       'sh', 'bash', 'zsh', 'fish', 'py', 'rb', 'php', 'java', 'c', 'cpp', 'h', 'hpp',
       'go', 'rs', 'swift', 'kt', 'scala', 'groovy', 'lua', 'r', 'sql', 'graphql',
       'vue', 'svelte', 'webc', 'astro', 'htaccess', 'env', 'gitignore', 'dockerignore'
     ];
     return textExtensions.includes(ext);
+  };
+
+  // 检测是否为HTML文件
+  const isHtmlFile = (filename: string): boolean => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    return ['html', 'htm'].includes(ext);
+  };
+
+  // 检测是否为PDF文件
+  const isPdfFile = (filename: string): boolean => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+    return ext === 'pdf';
   };
 
   // 检测是否为图片文件
@@ -633,6 +646,89 @@ const R2FileManager = () => {
         } else {
           setPreviewFile({ name: key, content: fileUrl, type: 'image' });
         }
+      } else if (isHtmlFile(key)) {
+        // HTML文件处理 - 使用blob URL以便在iframe中渲染
+        const headers: Record<string, string> = {};
+        if (config.apiToken) {
+          headers['Authorization'] = `Bearer ${config.apiToken}`;
+        }
+
+        // 使用 HEAD 请求先检查文件大小
+        const headResponse = await fetch(fileUrl, {
+          method: 'HEAD',
+          headers
+        });
+
+        if (!headResponse.ok) {
+          throw new Error('无法获取文件信息');
+        }
+
+        const contentLength = headResponse.headers.get('content-length');
+        const fileSize = contentLength ? parseInt(contentLength, 10) : 0;
+
+        // 限制预览文件大小为 10MB
+        const maxSize = 10 * 1024 * 1024;
+        if (fileSize > maxSize) {
+          throw new Error(`文件过大 (${formatSize(fileSize)})，超过预览限制 (10MB)，请下载后查看`);
+        }
+
+        const response = await fetch(fileUrl, { headers });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('未授权，请检查 API Token 配置');
+          }
+          if (response.status === 404) {
+            throw new Error('文件不存在');
+          }
+          throw new Error(`预览失败 (${response.status})`);
+        }
+
+        const html = await response.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        const blobUrl = URL.createObjectURL(blob);
+        setPreviewFile({ name: key, content: blobUrl, type: 'html' });
+      } else if (isPdfFile(key)) {
+        // PDF文件处理 - 使用blob URL以便在iframe中预览
+        const headers: Record<string, string> = {};
+        if (config.apiToken) {
+          headers['Authorization'] = `Bearer ${config.apiToken}`;
+        }
+
+        // 使用 HEAD 请求先检查文件大小
+        const headResponse = await fetch(fileUrl, {
+          method: 'HEAD',
+          headers
+        });
+
+        if (!headResponse.ok) {
+          throw new Error('无法获取文件信息');
+        }
+
+        const contentLength = headResponse.headers.get('content-length');
+        const fileSize = contentLength ? parseInt(contentLength, 10) : 0;
+
+        // 限制预览文件大小为 50MB
+        const maxSize = 50 * 1024 * 1024;
+        if (fileSize > maxSize) {
+          throw new Error(`文件过大 (${formatSize(fileSize)})，超过预览限制 (50MB)，请下载后查看`);
+        }
+
+        const response = await fetch(fileUrl, { headers });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('未授权，请检查 API Token 配置');
+          }
+          if (response.status === 404) {
+            throw new Error('文件不存在');
+          }
+          throw new Error(`预览失败 (${response.status})`);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setPreviewFile({ name: key, content: blobUrl, type: 'pdf' });
       } else {
         // 文本文件处理 - 先检查文件大小
         const headers: Record<string, string> = {};
@@ -773,11 +869,11 @@ const R2FileManager = () => {
   };
 
   return (
-    <div className="tool-container">
+    <div className="tool-container r2-file-manager-layout">
       <h2>R2 文件管理工具</h2>
-      <div className="tool-content">
-        {/* 文件列表区域 */}
-        <div className="file-list-section">
+      <div className="tool-content r2-split-layout">
+        {/* 左侧：文件列表区域 */}
+        <div className="file-list-section r2-left-panel">
           {/* 文件列表头部 - 包含面包屑和操作按钮 */}
           <div className="file-list-header">
             <div className="file-list-title">
@@ -887,17 +983,20 @@ const R2FileManager = () => {
                     <td>
                       <div className="file-table-cell">
                         <Icon name={getFileIconName(file.Key)} size={18} className="file-icon" />
-                        <span className="file-name" title={file.Key}>{file.Key}</span>
+                        <span className="file-name" title={file.Key}>{file.Key.includes('/') ? file.Key.substring(file.Key.lastIndexOf('/') + 1) : file.Key}</span>
                       </div>
                     </td>
                     <td>{formatSize(file.Size)}</td>
                     <td>{formatDate(file.LastModified)}</td>
                     <td>
                       <div className="file-table-cell-actions">
-                        {(isTextFile(file.Key) || isImageFile(file.Key)) && (
+                        {(isTextFile(file.Key) || isImageFile(file.Key) || isHtmlFile(file.Key) || isPdfFile(file.Key)) && (
                           <button
                             className="action-btn preview-btn"
-                            onClick={() => previewFileContent(file.Key)}
+                            onClick={() => {
+                              setPreviewPanelVisible(true);
+                              previewFileContent(file.Key);
+                            }}
                             title="预览"
                           >
                             <Icon name="eye" size={14} />
@@ -937,6 +1036,69 @@ const R2FileManager = () => {
                 ))}
               </tbody>
             </table>
+            </div>
+          )}
+        </div>
+
+        {/* 右侧：预览面板 */}
+        <div className={`preview-panel r2-right-panel ${previewPanelVisible ? 'visible' : ''}`}>
+          {previewLoading ? (
+            <div className="preview-loading">
+              <div className="loading-state">加载中...</div>
+            </div>
+          ) : previewFile ? (
+            <div className="preview-content-wrapper">
+              <div className="preview-panel-header">
+                <h3 className="preview-file-name">{previewFile.name}</h3>
+                <button
+                  className="btn-close"
+                  onClick={() => {
+                    setPreviewFile(null);
+                    setPreviewPanelVisible(false);
+                    // 如果是图片、HTML或PDF且使用了 blob URL，需要释放
+                    if ((previewFile.type === 'image' || previewFile.type === 'html' || previewFile.type === 'pdf') && previewFile.content.startsWith('blob:')) {
+                      URL.revokeObjectURL(previewFile.content);
+                    }
+                  }}
+                >
+                  <Icon name="close" size={20} />
+                </button>
+              </div>
+              <div className="preview-panel-content">
+                {previewFile.type === 'image' ? (
+                  <div className="preview-image-container">
+                    <img src={previewFile.content} alt={previewFile.name} className="preview-image" />
+                  </div>
+                ) : previewFile.type === 'html' ? (
+                  <iframe
+                    src={previewFile.content}
+                    className="preview-html"
+                    title={previewFile.name}
+                    sandbox="allow-scripts allow-same-origin"
+                  />
+                ) : previewFile.type === 'pdf' ? (
+                  <object
+                    data={previewFile.content}
+                    type="application/pdf"
+                    className="preview-pdf"
+                    title={previewFile.name}
+                  >
+                    <div className="preview-pdf-fallback">
+                      <p>PDF 文件预览</p>
+                      <a href={previewFile.content} download={previewFile.name.includes('/') ? previewFile.name.substring(previewFile.name.lastIndexOf('/') + 1) : previewFile.name} className="btn btn-primary">
+                        下载 PDF 文件
+                      </a>
+                    </div>
+                  </object>
+                ) : previewFile.type === 'text' ? (
+                  <pre className="preview-code">{previewFile.content}</pre>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="preview-empty">
+              <Icon name="eye" size={64} className="preview-empty-icon" />
+              <p>点击预览按钮查看文件内容</p>
             </div>
           )}
         </div>
@@ -1100,51 +1262,6 @@ const R2FileManager = () => {
                     : `开始上传 (${uploadFiles.length} 个文件)`
                   }
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 文件预览对话框 */}
-        {(previewLoading || previewFile) && (
-          <div className="preview-overlay" onClick={() => {
-            if (!previewLoading) {
-              setPreviewFile(null);
-              // 如果是图片且使用了 blob URL，需要释放
-              if (previewFile && previewFile.type === 'image' && previewFile.content.startsWith('blob:')) {
-                URL.revokeObjectURL(previewFile.content);
-              }
-            }
-          }}>
-            <div className="preview-dialog" onClick={(e) => e.stopPropagation()}>
-              <div className="preview-header">
-                <h3>{previewFile?.name || '加载中...'}</h3>
-                <button
-                  className="btn-close"
-                  onClick={() => {
-                    if (!previewLoading) {
-                      setPreviewFile(null);
-                      // 如果是图片且使用了 blob URL，需要释放
-                      if (previewFile && previewFile.type === 'image' && previewFile.content.startsWith('blob:')) {
-                        URL.revokeObjectURL(previewFile.content);
-                      }
-                    }
-                  }}
-                  disabled={previewLoading}
-                >
-                  <Icon name="close" size={20} />
-                </button>
-              </div>
-              <div className="preview-content">
-                {previewLoading ? (
-                  <div className="loading-state">加载中...</div>
-                ) : previewFile?.type === 'image' ? (
-                  <div className="preview-image-container">
-                    <img src={previewFile.content} alt={previewFile.name} className="preview-image" />
-                  </div>
-                ) : previewFile?.type === 'text' ? (
-                  <pre className="preview-code">{previewFile.content}</pre>
-                ) : null}
               </div>
             </div>
           </div>
