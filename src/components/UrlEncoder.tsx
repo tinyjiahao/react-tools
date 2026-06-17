@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
+import { safeSetItem, safeGetJSON } from '../lib/storage';
 
 interface HistoryItem {
   id: string;
@@ -20,20 +21,13 @@ const UrlEncoder = () => {
 
   // 加载历史记录
   useEffect(() => {
-    const savedHistory = localStorage.getItem('url_history');
-    if (savedHistory) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        setHistory(parsedHistory);
-        // 如果有历史记录，自动填充最新的一条
-        if (parsedHistory.length > 0) {
-          const latest = parsedHistory[0];
-          setInput(latest.input);
-          setOutput(latest.output);
-        }
-      } catch (e) {
-        console.error('Failed to parse history:', e);
-      }
+    const parsedHistory = safeGetJSON<HistoryItem[]>('url_history', []);
+    if (parsedHistory.length > 0) {
+      setHistory(parsedHistory);
+      // 如果有历史记录，自动填充最新的一条
+      const latest = parsedHistory[0];
+      setInput(latest.input);
+      setOutput(latest.output);
     }
   }, []);
 
@@ -47,31 +41,29 @@ const UrlEncoder = () => {
       timestamp: Date.now(),
     };
 
+    // 先在 updater 外计算新数组，避免在 setState 更新函数里产生副作用（localStorage 写入）。
+    // React 在 StrictMode/并发渲染下可能多次调用更新函数，副作用应放在更新函数之外。
     setHistory((prev) => {
       // 过滤掉重复的记录（输入和输出都相同）
       const filtered = prev.filter((item) => item.input !== inputStr || item.output !== outputStr);
       const newHistory = [newItem, ...filtered].slice(0, 100); // 只保留最近 100 条
-      localStorage.setItem('url_history', JSON.stringify(newHistory));
       return newHistory;
     });
   };
 
+  // 单独的 effect 负责把 history 持久化到 localStorage（副作用集中在 effect 中）
+  useEffect(() => {
+    safeSetItem('url_history', JSON.stringify(history));
+  }, [history]);
+
   const deleteHistoryItem = (id: string) => {
-    setHistory((prev) => {
-      const newHistory = prev.filter((item) => item.id !== id);
-      localStorage.setItem('url_history', JSON.stringify(newHistory));
-      return newHistory;
-    });
+    setHistory((prev) => prev.filter((item) => item.id !== id));
   };
 
   const updateHistoryNote = (id: string, note: string) => {
-    setHistory((prev) => {
-      const newHistory = prev.map((item) =>
-        item.id === id ? { ...item, note } : item
-      );
-      localStorage.setItem('url_history', JSON.stringify(newHistory));
-      return newHistory;
-    });
+    setHistory((prev) => prev.map((item) =>
+      item.id === id ? { ...item, note } : item
+    ));
   };
 
   const clearHistory = () => {

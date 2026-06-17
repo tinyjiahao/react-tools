@@ -97,9 +97,10 @@ export default function CurlBuilder() {
 
   const handleCopy = useCallback(() => {
     if (!result) return;
-    navigator.clipboard.writeText(result).then(() => {
-      showToast('已复制到剪贴板');
-    });
+    // 复制失败时也要给用户反馈（之前 reject 没有 .catch，toast 永不显示）
+    navigator.clipboard.writeText(result)
+      .then(() => showToast('已复制到剪贴板'))
+      .catch(() => showToast('复制失败，请手动复制'));
   }, [result]);
 
   const handleClear = useCallback(() => {

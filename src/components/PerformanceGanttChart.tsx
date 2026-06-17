@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import './PerformanceGanttChart.css';
 
 interface PerformanceEvent {
@@ -23,30 +23,34 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
   selectedEvent
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollPosition, setScrollPosition] = useState({ left: 0, top: 0 });
+  // 滚动位置只用 ref 跟踪，不再作为 state，
+  // 避免之前 scroll 监听 → setState → effect 写回 DOM 形成的反馈环
+  const scrollPositionRef = useRef({ left: 0, top: 0 });
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
-      setScrollPosition({
+      scrollPositionRef.current = {
         left: container.scrollLeft,
         top: container.scrollTop
-      });
+      };
     };
 
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 仅在挂载时恢复一次滚动位置（之前依赖 scrollPosition state，每次滚动都会把 DOM
+  // 滚动位置写回，与用户滚动互相打架；events 变化（如按耗时筛选）时也不该重置滚动）
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (container && (scrollPosition.left !== 0 || scrollPosition.top !== 0)) {
-      container.scrollLeft = scrollPosition.left;
-      container.scrollTop = scrollPosition.top;
+    if (container && (scrollPositionRef.current.left !== 0 || scrollPositionRef.current.top !== 0)) {
+      container.scrollLeft = scrollPositionRef.current.left;
+      container.scrollTop = scrollPositionRef.current.top;
     }
-  }, [events, scrollPosition]);
+  }, []);
 
   if (events.length === 0) {
     return <div className="gantt-empty">暂无数据</div>;

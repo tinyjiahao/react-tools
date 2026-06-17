@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import Icon from './Icon';
+import { safeSetItem, safeGetJSON } from '../lib/storage';
 
 interface HistoryItem {
   id: string;
@@ -20,18 +21,11 @@ const QrCodeGenerator = () => {
 
   // 加载历史记录
   useEffect(() => {
-    const savedHistory = localStorage.getItem('qr_history');
-    if (savedHistory) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        setHistory(parsedHistory);
-        // 如果有历史记录，自动填充最新的一条
-        if (parsedHistory.length > 0) {
-          setUrl(parsedHistory[0].url);
-        }
-      } catch (e) {
-        console.error('Failed to parse history:', e);
-      }
+    const parsedHistory = safeGetJSON<HistoryItem[]>('qr_history', []);
+    if (parsedHistory.length > 0) {
+      setHistory(parsedHistory);
+      // 如果有历史记录，自动填充最新的一条
+      setUrl(parsedHistory[0].url);
     }
   }, []);
 
@@ -43,31 +37,27 @@ const QrCodeGenerator = () => {
       timestamp: Date.now(),
     };
 
+    // 副作用（localStorage 写入）不放在 setState 更新函数里，避免 StrictMode/并发渲染重复执行
     setHistory((prev) => {
       // 过滤掉重复的 URL，只保留最新的
       const filtered = prev.filter((item) => item.url !== newUrl);
-      const newHistory = [newItem, ...filtered].slice(0, 100); // 只保留最近 100 条
-      localStorage.setItem('qr_history', JSON.stringify(newHistory));
-      return newHistory;
+      return [newItem, ...filtered].slice(0, 100); // 只保留最近 100 条
     });
   };
 
+  // 单独的 effect 负责把 history 持久化到 localStorage
+  useEffect(() => {
+    safeSetItem('qr_history', JSON.stringify(history));
+  }, [history]);
+
   const deleteHistoryItem = (id: string) => {
-    setHistory((prev) => {
-      const newHistory = prev.filter((item) => item.id !== id);
-      localStorage.setItem('qr_history', JSON.stringify(newHistory));
-      return newHistory;
-    });
+    setHistory((prev) => prev.filter((item) => item.id !== id));
   };
 
   const updateHistoryNote = (id: string, note: string) => {
-    setHistory((prev) => {
-      const newHistory = prev.map((item) =>
-        item.id === id ? { ...item, note } : item
-      );
-      localStorage.setItem('qr_history', JSON.stringify(newHistory));
-      return newHistory;
-    });
+    setHistory((prev) => prev.map((item) =>
+      item.id === id ? { ...item, note } : item
+    ));
   };
 
   const clearHistory = () => {
@@ -108,8 +98,10 @@ const QrCodeGenerator = () => {
     }
   };
 
-  // QR Code 数据容量上限（level L 字节模式约 2953 字节）
-  const isUrlTooLong = new TextEncoder().encode(url).length > 2953;
+  // QR Code 数据容量上限（level L 字节模式约 2953 字节）。
+  // 用 useMemo 缓存字节数，避免每次渲染都新建 TextEncoder 并重新编码。
+  const urlByteLength = useMemo(() => new TextEncoder().encode(url).length, [url]);
+  const isUrlTooLong = urlByteLength > 2953;
 
   return (
     <div className="tool-container">
@@ -141,7 +133,7 @@ const QrCodeGenerator = () => {
               {isUrlTooLong && (
                 <div className="error-message">
                   <Icon name="warning" size={18} className="error-icon" />
-                  URL超出二维码最大容量（当前 {new TextEncoder().encode(url).length} 字节，上限 2953 字节），建议使用短链服务
+                  URL超出二维码最大容量（当前 {urlByteLength} 字节，上限 2953 字节），建议使用短链服务
                 </div>
               )}
             </div>

@@ -231,15 +231,17 @@ const KnowledgeManager = () => {
       try {
         setLoading(true);
         const response = await fetch('/docs/km.txt');
-        const text = await response.text();
 
-        // 检查响应是否是 HTML（404 页面）
-        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-          throw new Error('知识库数据文件不存在，请在 /public/docs/km.txt 添加数据');
-        }
-
+        // 先校验响应状态，再读 body
         if (!response.ok) {
           throw new Error(`加载失败: ${response.status} ${response.statusText}`);
+        }
+
+        const text = await response.text();
+
+        // 检查响应是否是 HTML（404 页面等）
+        if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+          throw new Error('知识库数据文件不存在，请在 /public/docs/km.txt 添加数据');
         }
 
         const json = JSON.parse(text) as KmData;
@@ -283,12 +285,19 @@ const KnowledgeManager = () => {
     return null;
   }
 
-  // 解析 body 字符串为 JSON 对象
+  // 解析 body 字符串为 JSON 对象。
+  // 注意：不能在 catch 里调 setError —— 那是 render 阶段的 setState，会触发重渲染循环。
+  // 这里改为直接渲染解析失败的兜底 UI。
   let bodyData: { type: string; content: Array<BaseNode | TextNode> };
+  let parseError = false;
   try {
     bodyData = JSON.parse(data.data.body);
   } catch (err) {
-    setError('Body 数据解析失败');
+    parseError = true;
+    bodyData = { type: '', content: [] };
+  }
+
+  if (parseError) {
     return (
       <div className="tool-container">
         <h2>知识库 - {data.data.title}</h2>

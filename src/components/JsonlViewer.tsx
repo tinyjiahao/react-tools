@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Icon from './Icon';
@@ -564,7 +564,17 @@ const GenericView: React.FC<{
   const [showCopied, setShowCopied] = useState(false);
   const [tab, setTab] = useState<'render' | 'json'>('json');
 
-  const selectedLine = selectedIndex !== null ? lines[selectedIndex] : null;
+  // 当 lines 被替换或缩短时，selectedIndex 可能越界（lines[selectedIndex] 为 undefined），
+  // 后续读取 selectedLine.error 会崩溃。这里同步校正。
+  useEffect(() => {
+    if (selectedIndex !== null && selectedIndex >= lines.length) {
+      setSelectedIndex(null);
+    }
+  }, [lines, selectedIndex]);
+
+  const selectedLine = (selectedIndex !== null && lines[selectedIndex] !== undefined)
+    ? lines[selectedIndex]
+    : null;
   const selectedObj = selectedLine?.parsed ?? null;
 
   // 选中行切换时，自动切换到合适的 tab

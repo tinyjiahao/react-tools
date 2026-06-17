@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
 
 interface MessageToastProps {
@@ -14,18 +14,30 @@ const MessageToast: React.FC<MessageToastProps> = ({
 }) => {
   const [visible, setVisible] = useState(false);
 
+  // 连续两次 show=true（如连续点"复制"）时，原来只依赖 show 的 effect 不会重跑，
+  // 导致 toast 不再出现。这里用一个自增 token：每次 show 为 true 时改变它，
+  // 驱动 effect 重新显示并重置计时。token 变化不会再次改变 show，因此无循环。
+  const [token, setToken] = useState(0);
+  const wasShownRef = useRef(false);
+  if (show && !wasShownRef.current) {
+    wasShownRef.current = true;
+    setToken(t => t + 1);
+  } else if (!show && wasShownRef.current) {
+    wasShownRef.current = false;
+  }
+
   useEffect(() => {
-    if (show) {
-      setVisible(true);
-      const timer = setTimeout(() => {
-        setVisible(false);
-      }, duration);
-      return () => clearTimeout(timer);
-    } else {
-      // show 变为 false 时立即隐藏
+    if (!show) {
       setVisible(false);
+      return;
     }
-  }, [show, duration]);
+    setVisible(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+    }, duration);
+    return () => clearTimeout(timer);
+    // token 让连续 show=true 也能重新触发
+  }, [show, token, duration]);
 
   if (!visible) return null;
 

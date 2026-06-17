@@ -65,25 +65,27 @@ const JsonFormatter = () => {
   const editorRef = useRef<any>(null);
 
   // 递归解析JSON字符串中的合法JSON值
-  const parseJsonRecursively = (obj: any): any => {
+  // 增加 depth 上限，避免恶意构造的超深嵌套字符串导致栈溢出（DoS）
+  const parseJsonRecursively = (obj: any, depth: number = 0): any => {
+    if (depth > 50) return obj;
     if (typeof obj === 'string') {
       // 尝试解析字符串是否为合法的JSON
       try {
         const parsed = JSON.parse(obj);
         // 如果解析成功，递归处理解析后的结果
-        return parseJsonRecursively(parsed);
+        return parseJsonRecursively(parsed, depth + 1);
       } catch {
         // 如果不是合法的JSON，保持原字符串
         return obj;
       }
     } else if (Array.isArray(obj)) {
       // 处理数组中的每个元素
-      return obj.map(item => parseJsonRecursively(item));
+      return obj.map(item => parseJsonRecursively(item, depth + 1));
     } else if (obj && typeof obj === 'object') {
       // 处理对象中的每个属性
       const result: any = {};
       for (const [key, value] of Object.entries(obj)) {
-        result[key] = parseJsonRecursively(value);
+        result[key] = parseJsonRecursively(value, depth + 1);
       }
       return result;
     }
