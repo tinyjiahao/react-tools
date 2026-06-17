@@ -72,11 +72,14 @@ const NotesManager = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('notes_sidebar_collapsed') === 'true';
   });
-  const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 使用 ref 来跟踪当前笔记的最新内容，避免闭包中的旧值
   const currentNoteRef = useRef<Note | null>(null);
   // 存储原始笔记内容，用于比较是否有变化
   const originalNoteRef = useRef<Note | null>(null);
+  // 保存并发控制：是否正在保存、是否在保存期间又产生了新的改动
+  const isSavingRef = useRef(false);
+  const isSavePendingRef = useRef(false);
 
   // 调用 Workers API
   const callWorkerApi = useCallback(async (action: string, currentConfig: Config, body?: any) => {
@@ -259,23 +262,7 @@ const NotesManager = () => {
     });
   }, []);
 
-  // 处理点击笔记 - 从 R2 加载最新内容
-  const handleNoteClick = useCallback(async (note: Note) => {
-    // 先用列表数据显示，避免等待
-    updateSelectedNote(note);
-
-    // 然后从 R2 加载最新内容
-    const latestNote = await loadNoteContent(note.id);
-    if (latestNote) {
-      // 保存原始内容用于比较
-      originalNoteRef.current = { ...latestNote };
-      updateSelectedNote(latestNote);
-      // 同时更新列表中的数据
-      setNotes(prev => prev.map(n => n.id === latestNote.id ? latestNote : n));
-    }
-  }, [loadNoteContent, updateSelectedNote]);
-
-  // 自动保存笔记（防抖1秒）
+  // 自动保存笔记（防抖后触发）
   const saveNote = useCallback(async (note: Note) => {
     const r2_config = localStorage.getItem('r2_config');
     if (!r2_config) return;
@@ -294,15 +281,23 @@ const NotesManager = () => {
       return;
     }
 
+    // 并发控制：如果已有保存正在进行，标记需要再次保存（保存最新内容）
+    if (isSavingRef.current) {
+      isSavePendingRef.current = true;
+      return;
+    }
+
     setSaving(true);
+    isSavingRef.current = true;
     try {
       const fileName = `notes/${note.id}.json`;
+      const nowIso = new Date().toISOString();
       const content = JSON.stringify({
         title: note.title,
         content: note.content,
         tags: note.tags,
         createdAt: note.createdAt,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       }, null, 2);
 
       const formData = new FormData();
@@ -330,11 +325,11 @@ const NotesManager = () => {
 
       // 更新笔记列表中的时间
       setNotes(prev => prev.map(n =>
-        n.id === note.id ? { ...n, updatedAt: new Date().toISOString() } : n
+        n.id === note.id ? { ...n, updatedAt: nowIso } : n
       ));
 
       // 保存成功后更新原始内容
-      originalNoteRef.current = { ...note, updatedAt: new Date().toISOString() };
+      originalNoteRef.current = { ...note, updatedAt: nowIso };
 
       // 显示保存成功提示
       setToastMessage('笔记已保存');
@@ -343,42 +338,126 @@ const NotesManager = () => {
       console.error('保存笔记失败:', err);
       setError(`保存失败: ${(err as Error).message}`);
     } finally {
+      isSavingRef.current = false;
       setSaving(false);
+
+      // 如果在保存期间又产生了新的改动，再保存一次最新内容
+      if (isSavePendingRef.current) {
+        isSavePendingRef.current = false;
+        const latestNote = currentNoteRef.current;
+        if (latestNote) {
+          saveNote(latestNote);
+        }
+      }
     }
   }, []);
+
+  // 立即执行待保存（取消防抖定时器，同步触发一次保存）
+  const flushSave = useCallback(() => {
+    if (autoSaveRef.current) {
+      clearTimeout(autoSaveRef.current);
+      autoSaveRef.current = null;
+    }
+    const latestNote = currentNoteRef.current;
+    if (latestNote) {
+      saveNote(latestNote);
+    }
+  }, [saveNote]);
+
+  // 处理点击笔记 - 从 R2 加载最新内容
+  const handleNoteClick = useCallback(async (note: Note) => {
+    // 切换前先提交当前笔记未保存的改动，避免防抖定时器被清除导致丢失
+    if (selectedNote?.id && selectedNote.id !== note.id) {
+      flushSave();
+    }
+
+    // 先用列表数据显示，避免等待
+    updateSelectedNote(note);
+
+    // 然后从 R2 加载最新内容
+    const latestNote = await loadNoteContent(note.id);
+    if (latestNote) {
+      // 保存原始内容用于比较
+      originalNoteRef.current = { ...latestNote };
+      updateSelectedNote(latestNote);
+      // 同时更新列表中的数据
+      setNotes(prev => prev.map(n => n.id === latestNote.id ? latestNote : n));
+    }
+  }, [loadNoteContent, updateSelectedNote, selectedNote, flushSave]);
 
   // 手动保存笔记 - 使用 ref 中的最新数据
   const handleManualSave = useCallback(async () => {
     const latestNote = currentNoteRef.current;
     if (!latestNote) return;
+    // 取消待执行的自动保存，以手动保存为准（手动保存始终触发，不受"无变化"判断限制）
+    if (autoSaveRef.current) {
+      clearTimeout(autoSaveRef.current);
+      autoSaveRef.current = null;
+    }
     await saveNote(latestNote);
   }, [saveNote]);
 
   // 防抖自动保存 - 使用 ref 获取最新内容
+  // 仅依赖 noteId（切换笔记时才重建定时器），内容变化通过 ref 读取，
+  // 避免每次输入都重置定时器导致自动保存永不触发
   useEffect(() => {
     if (!selectedNote) return;
 
+    // 切换笔记时清理上一次的定时器
     if (autoSaveRef.current) {
       clearTimeout(autoSaveRef.current);
     }
 
     autoSaveRef.current = setTimeout(() => {
+      autoSaveRef.current = null;
       // 使用 ref 中的最新数据，而不是闭包中的旧值
       const latestNote = currentNoteRef.current;
       if (latestNote) {
         saveNote(latestNote);
       }
-    }, 10000); // 10秒后自动保存
+    }, 1500); // 1.5秒防抖
 
     return () => {
       if (autoSaveRef.current) {
         clearTimeout(autoSaveRef.current);
+        autoSaveRef.current = null;
       }
     };
-  }, [selectedNote, saveNote]);
+  }, [selectedNote?.id, saveNote]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 页面隐藏 / 关闭 / 切换标签页时，立即保存未提交的改动
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'hidden') {
+        flushSave();
+      }
+    };
+    const beforeUnloadHandler = () => {
+      flushSave();
+    };
+
+    document.addEventListener('visibilitychange', handler);
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    return () => {
+      document.removeEventListener('visibilitychange', handler);
+      window.removeEventListener('beforeunload', beforeUnloadHandler);
+    };
+  }, [flushSave]);
+
+  // 组件卸载时保存
+  useEffect(() => {
+    return () => {
+      flushSave();
+    };
+  }, [flushSave]);
 
   // 创建新笔记
   const createNote = () => {
+    // 创建前先提交当前笔记未保存的改动
+    if (selectedNote) {
+      flushSave();
+    }
+
     const newNote: Note = {
       id: `${Date.now()}`,
       title: '新笔记',
