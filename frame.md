@@ -35,6 +35,10 @@ react-tools/
 │   ├── App.tsx                 # 主框架：导航/路由/布局切换/主题
 │   ├── App.css                 # 全局样式 + CSS 变量主题系统
 │   ├── index.css               # 基础 reset
+│   ├── lib/                    # 共享模块（R2/Worker 通信、localStorage、共享类型）
+│   │   ├── types.ts            # Config / FileItem（4 个 R2 组件共用）
+│   │   ├── storage.ts          # safeGetConfig / safeSetItem / STORAGE_KEYS 常量
+│   │   └── r2Api.ts            # callWorkerApi / uploadWithProgress（token 走 header）
 │   ├── components/             # 全部工具组件（详见 §4）
 │   └── types/                  # 第三方类型声明（snappyjs）
 ├── docs/
@@ -150,7 +154,7 @@ react-tools/
 - **无全局状态库**（无 Redux/Zustand/Context）。每个工具组件自管理状态，App 仅持有当前激活的工具与 UI 偏好。
 - **跨组件共享**仅靠 `localStorage`：例如 R2 配置由 `SettingsDialog` 写入，各存储组件运行时读取，实现"设置一次，多处生效"。
 
-涉及的 `localStorage` 键：
+涉及的 `localStorage` 键（集中声明在 `src/lib/storage.ts` 的 `STORAGE_KEYS` 常量）：
 
 | 键 | 用途 |
 |----|------|
@@ -162,23 +166,17 @@ react-tools/
 | `performanceData` / `performanceHistory` | 性能分析数据 |
 | `qr_history` / `url_history` / `base64_history` | 各工具历史记录 |
 
+> 所有 `localStorage` 读取统一走 `safeGetConfig` / `safeGetJSON`（带 try/catch + 字段校验，损坏值不再抛 SyntaxError），写入走 `safeSetItem`（捕获 QuotaExceededError）。
+
 ### 4.4 API 调用模式
 
-存储类组件统一通过 `fetch` 直连 Worker，模式一致：
+存储类组件统一通过 `src/lib/r2Api.ts` 的共享封装访问 Worker：
 
-```ts
-// 读操作：POST + JSON body
-const res = await fetch(`${workerUrl}?action=${action}`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiToken}` },
-  body: JSON.stringify({ ... }),
-});
+- **`callWorkerApi(action, config, body)`** — JSON 接口（list/delete/rename）。token 通过 `Authorization: Bearer` header 传递。
+- **`uploadWithProgress(config, formData, onProgress)`** — 带进度的 FormData 上传，token 同样走 header（不进 URL）。
+- **文件直读**：`GET /file/{key}`，图片可免 token。
 
-// 文件直读：GET /file/{key}（图片可免 token）
-const fileUrl = `${baseUrl}/file/${encodeURIComponent(key)}`;
-```
-
-部分上传场景（带进度）使用 `XMLHttpRequest`。
+> 之前这套逻辑在 4 个 R2 组件里各重复一份、且参数顺序不一致；现已集中到 `src/lib/`，组件只负责调用与 UI。
 
 ### 4.5 主题系统（`App.css`）
 
@@ -202,21 +200,26 @@ const fileUrl = `${baseUrl}/file/${encodeURIComponent(key)}`;
 | 路径 / 参数 | 方法 | 鉴权 | 功能 |
 |-------------|------|------|------|
 | `/file/{key}` | GET | 图片免 token；其他需 `Authorization: Bearer` | 读取文件（图片 inline，其他 attachment） |
-| `?action=list` | POST | 需 token | 列文件，支持 `{ prefix }` 目录过滤 |
-| `?action=upload` | POST (FormData) | 需 token | 上传，`path` 字段决定 R2 key |
+| `?action=list` | POST | 需 token | 列文件，支持 `{ prefix }` 目录过滤，自动分页（不受 R2 1000 条上限截断） |
+| `?action=upload` | POST (FormData) | 需 token | 上传，`path` 字段决定 R2 key；限 100MB、流式写入 |
 | `?action=delete` | POST | 需 token | 删除文件 |
-| `?action=rename` | POST | 需 token | 复制到新 key 后删除旧 key |
+| `?action=rename` | POST | 需 token | 流式复制到新 key 后删除旧 key，删除失败会如实报错 |
 
 ### 5.2 绑定与环境变量
 
-- `R2_BUCKET`：R2 存储桶绑定（wrangler.toml 中的 `[[r2_buckets]]`）。
-- `API_TOKEN`：可选访问令牌，建议用 `wrangler secret` 设置。
+- `R2_BUCKET`：R2 存储桶绑定（wrangler.toml 中的 `[[r2_buckets]]`），缺失时返回 500。
+- `API_TOKEN`：**必填**访问令牌（`wrangler secret` 设置）。**fail-closed**：未配置时所有写操作一律 401。
+- `ALLOWED_ORIGINS`：允许的跨域来源（逗号分隔），生产环境必填，如 `https://your-app.pages.dev`。未配置时回退到 `*`（仅适合本地调试）。
 
 ### 5.3 安全设计要点
 
-- **CORS**：`Access-Control-Allow-Origin: *`，先处理 `OPTIONS` 预检。
+- **fail-closed 鉴权**：未配置 `API_TOKEN` 时拒绝所有写操作（不再"放行"）。
+- **Token 仅认 Header**：只从 `Authorization: Bearer xxx` 读取，不再从 URL query 读取，避免泄露进访问日志/浏览器历史。
+- **CORS 来源白名单**：根据 `ALLOWED_ORIGINS` 反射匹配的 Origin，并设 `Vary: Origin`（不再无条件 `*`）。
+- **Key 安全校验**：`/file/`、upload、delete、rename 拒绝含 `..`、NUL、以 `/` 开头、或不在已知前缀（`notes/`、`markdown_file/`、`assets/`）下的 key。
 - **分层鉴权**：`/file/` 路径中，图片扩展名（jpg/png/gif/webp/svg/bmp/ico）免鉴权以便直接 `<img>` 引用，其余需 token。
-- 静态资源缓存 1 年（`Cache-Control: public, max-age=31536000`）。
+- **缓存策略**：可变内容（`notes/`、`markdown_file/`）输出 `Cache-Control: no-cache`，其余静态资源才缓存 1 年。
+- 错误响应不回传内部 `error.message`。
 
 ---
 
@@ -232,12 +235,13 @@ const fileUrl = `${baseUrl}/file/${encodeURIComponent(key)}`;
 ### 6.2 后端 Worker（手动部署）
 
 1. 在 Cloudflare Dashboard 创建 Worker。
-2. 粘贴 `docs/worker.js` 内容。
+2. 粘贴 `docs/worker.js` 内容（**这是唯一维护来源**）。
 3. 绑定 R2 存储桶（`R2_BUCKET`）。
-4. 设置 `API_TOKEN` secret。
-5. 将 Worker URL 填入前端"设置 → R2 存储"。
+4. 设置 `API_TOKEN` secret（必填，未配置将拒绝所有写操作）。
+5. 设置 `ALLOWED_ORIGINS` 为前端 Pages 域名（必填，用于 CORS 白名单）。
+6. 将 Worker URL 填入前端"设置 → R2 存储"。
 
-> 前端 `SettingsDialog` 内置了完整的 Worker 代码示例与 `wrangler.toml` 配置，可直接复制部署。
+> 前端 `SettingsDialog` 提供 Worker 配置要点与部署步骤说明，代码本体以 `docs/worker.js` 为准。
 
 ---
 
