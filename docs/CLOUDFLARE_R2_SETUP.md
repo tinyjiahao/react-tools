@@ -2,6 +2,13 @@
 
 本文档详细介绍如何使用 Cloudflare Workers 作为代理服务器访问 Cloudflare R2 对象存储。
 
+> **权威代码来源**：部署用的 Worker 代码以仓库中的 [`docs/worker.js`](./worker.js) 为准。本文档中的代码片段仅供讲解，可能与最新实现略有出入。该 Worker 已包含以下安全加固（部署时请同步配置对应环境变量）：
+> - **fail-closed 鉴权**：未配置 `API_TOKEN` 时所有写操作一律拒绝（不再"放行"）。
+> - **Token 仅认 Header**：token 只从 `Authorization: Bearer xxx` 读取，不再从 URL query 读取（避免泄露进访问日志/浏览器历史）。
+> - **CORS 来源白名单**：通过环境变量 `ALLOWED_ORIGINS`（逗号分隔）限制允许的跨域来源，生产环境必填。
+> - **可变内容不长期缓存**：`notes/`、`markdown_file/` 前缀输出 `no-cache`，其余才用 1 年缓存。
+> - **list 分页 / 重命名原子性 / 上传大小上限（100MB）/ key 安全校验**。
+
 ## 目录
 
 1. [前置条件](#前置条件)

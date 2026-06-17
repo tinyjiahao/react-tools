@@ -27,135 +27,24 @@ interface R2Config {
 }
 
 // Worker 代码示例
-const workerCode = `export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    const action = url.searchParams.get('action') || '';
-
-    // CORS 预检请求处理 - 必须在最前面
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
-      });
-    }
-
-    // 设置 CORS 响应头
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'application/json',
-    };
-
-    // 验证 Token (可选)
-    const token = url.searchParams.get('authorization') ||
-                  request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (env.API_TOKEN && token !== env.API_TOKEN) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: corsHeaders
-      });
-    }
-
-    try {
-      // 直接访问文件 (通过 Worker 代理) - 必须在 action 检查之前
-      if (url.pathname.startsWith('/file/')) {
-        // 验证 Token (从 Authorization header 获取)
-        const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-        if (env.API_TOKEN && token !== env.API_TOKEN) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*',
-            }
-          });
-        }
-
-        const key = decodeURIComponent(url.pathname.substring(6)); // 去掉 '/file/' 前缀
-        const object = await env.R2_BUCKET.get(key);
-
-        if (!object) {
-          return new Response('File not found', {
-            status: 404,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-            }
-          });
-        }
-
-        const headers = new Headers();
-        object.writeHttpMetadata(headers);
-        headers.set('etag', object.httpEtag);
-        headers.set('Cache-Control', 'public, max-age=31536000'); // 缓存 1 年
-        headers.set('Access-Control-Allow-Origin', '*'); // 添加 CORS 头
-
-        // 设置 Content-Disposition 以便浏览器正确处理文件名
-        const encodedFilename = encodeURIComponent(key);
-        headers.set('Content-Disposition', \`attachment; filename="\${encodedFilename}"\`);
-
-        return new Response(object.body, { headers });
-      }
-
-      // 列出文件
-      if (action === 'list') {
-        const listed = await env.R2_BUCKET.list();
-        return Response.json({
-          files: listed.objects.map(obj => ({
-            Key: obj.key,
-            Size: obj.size,
-            LastModified: obj.uploaded.toISOString(),
-            ETag: obj.etag
-          }))
-        }, { headers: corsHeaders });
-      }
-
-      // 上传文件
-      if (action === 'upload' && request.method === 'POST') {
-        const formData = await request.formData();
-        const file = formData.get('file');
-        if (!file) {
-          return new Response(JSON.stringify({ error: 'No file provided' }), {
-            status: 400, headers: corsHeaders
-          });
-        }
-        await env.R2_BUCKET.put(file.name, file.stream(), {
-          httpMetadata: { contentType: file.type }
-        });
-        return Response.json({ success: true, key: file.name }, { headers: corsHeaders });
-      }
-
-      // 删除文件
-      if (action === 'delete' && request.method === 'POST') {
-        const { key } = await request.json();
-        await env.R2_BUCKET.delete(key);
-        return Response.json({ success: true }, { headers: corsHeaders });
-      }
-
-      return new Response(JSON.stringify({
-        error: 'Invalid action',
-        availableActions: ['list', 'upload', 'delete'],
-        note: '文件下载直接访问 /file/{key} 路径，需在 Authorization header 中携带 token'
-      }), {
-        status: 400,
-        headers: corsHeaders,
-      });
-
-    } catch (error) {
-      console.error('Worker error:', error);
-      return new Response(JSON.stringify({
-        error: 'Internal server error',
-        message: error.message || 'Unknown error'
-      }), {
-        status: 500,
-        headers: corsHeaders,
-      });
-    }
-  }
-};`;
+// Worker 代码示例。
+// 真正的、持续维护的 Worker 源码位于仓库的 docs/worker.js。
+// 这里不再内嵌完整副本（旧副本曾与 docs/worker.js 漂移、含已修复的安全问题），
+// 改为引导用户复制 docs/worker.js 的内容部署。
+const workerCode = `// 请复制仓库中 docs/worker.js 的完整内容部署到 Cloudflare Worker。
+//
+// docs/worker.js 是唯一维护来源，包含：
+//   - fail-closed 鉴权（未配置 API_TOKEN 时拒绝所有写操作）
+//   - token 仅从 Authorization header 读取（不再进 URL，避免泄露进日志）
+//   - CORS 来源白名单（环境变量 ALLOWED_ORIGINS）
+//   - 可变内容（notes/、markdown_file/）不长期缓存
+//   - list 分页、重命名原子性、上传大小上限、key 安全校验
+//
+// 需要的环境变量 / 绑定：
+//   R2_BUCKET      —— R2 存储桶绑定（必填）
+//   API_TOKEN      —— 访问令牌（必填）
+//   ALLOWED_ORIGINS—— 允许的跨域来源，逗号分隔（生产必填，如 https://your-app.pages.dev）
+`;
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ isOpen, onClose }) => {
   const [themeColor, setThemeColor] = useState<string>(() => {
