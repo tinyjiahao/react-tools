@@ -2,18 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
-
-interface FileItem {
-  Key: string;
-  Size: number;
-  LastModified: string;
-  ETag?: string;
-}
-
-interface Config {
-  workerUrl: string;
-  apiToken: string;
-}
+import type { Config, FileItem } from '../lib/types';
+import { STORAGE_KEYS, safeGetConfig } from '../lib/storage';
+import { callWorkerApi, uploadWithProgress } from '../lib/r2Api';
 
 interface Note {
   id: string;
@@ -81,37 +72,12 @@ const NotesManager = () => {
   const isSavingRef = useRef(false);
   const isSavePendingRef = useRef(false);
 
-  // 调用 Workers API
-  const callWorkerApi = useCallback(async (action: string, currentConfig: Config, body?: any) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (currentConfig.apiToken) {
-      headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
-    }
-
-    const response = await fetch(`${currentConfig.workerUrl}?action=${action}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(errorData.error || `操作失败 (${response.status})`);
-    }
-
-    return response.json();
-  }, []);
+  // 调用 Workers API —— 使用共享封装（见 src/lib/r2Api.ts），参数顺序 (action, config, body)
 
   // 从 R2 加载单个笔记的完整内容
   const loadNoteContent = useCallback(async (noteId: string): Promise<Note | null> => {
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) return null;
-
-    const currentConfig = JSON.parse(r2_config) as Config;
-    if (!currentConfig.workerUrl) return null;
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig || !currentConfig.workerUrl) return null;
 
     try {
       const baseUrl = currentConfig.workerUrl.replace(/\/$/, '');
@@ -139,13 +105,12 @@ const NotesManager = () => {
 
   // 加载笔记列表
   const loadNotesList = useCallback(async () => {
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
       return;
     }
 
-    const currentConfig = JSON.parse(r2_config) as Config;
     if (!currentConfig.workerUrl) {
       setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
       return;
@@ -215,23 +180,17 @@ const NotesManager = () => {
   // 加载配置
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    const r2_config = localStorage.getItem('r2_config');
-    if (r2_config) {
-      try {
-        const parsed = JSON.parse(r2_config);
-        if (parsed.workerUrl) {
-          setSettingsConfig(parsed);
-          loadNotesList();
-        } else {
-          setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
-        }
-      } catch (e) {
-        console.error('Failed to parse config:', e);
-        setError('配置读取失败，请重新配置');
-      }
-    } else {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
+      return;
     }
+    if (!currentConfig.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+    setSettingsConfig(currentConfig);
+    loadNotesList();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -264,11 +223,8 @@ const NotesManager = () => {
 
   // 自动保存笔记（防抖后触发）
   const saveNote = useCallback(async (note: Note) => {
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) return;
-
-    const currentConfig = JSON.parse(r2_config) as Config;
-    if (!currentConfig.workerUrl) return;
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig || !currentConfig.workerUrl) return;
 
     // 检查内容是否有变化
     const original = originalNoteRef.current;
@@ -303,25 +259,7 @@ const NotesManager = () => {
       const formData = new FormData();
       formData.append('file', new Blob([content], { type: 'application/json' }), fileName);
 
-      const xhr = new XMLHttpRequest();
-
-      await new Promise<void>((resolve, reject) => {
-        xhr.addEventListener('load', () => {
-          if (xhr.status === 200) {
-            resolve();
-          } else {
-            const responseText = xhr.responseText || '保存失败';
-            reject(new Error(`保存失败 (${xhr.status}): ${responseText}`));
-          }
-        });
-
-        xhr.addEventListener('error', () => {
-          reject(new Error('保存失败，请检查网络连接'));
-        });
-
-        xhr.open('POST', `${currentConfig.workerUrl}?action=upload&authorization=${encodeURIComponent(currentConfig.apiToken)}`);
-        xhr.send(formData);
-      });
+      await uploadWithProgress(currentConfig, formData);
 
       // 更新笔记列表中的时间
       setNotes(prev => prev.map(n =>
@@ -488,14 +426,13 @@ const NotesManager = () => {
   const performDelete = async () => {
     if (!deletingNoteId) return;
 
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息');
       setShowDeleteConfirm(false);
       return;
     }
 
-    const currentConfig = JSON.parse(r2_config) as Config;
     if (!currentConfig.workerUrl) {
       setShowDeleteConfirm(false);
       return;
@@ -534,13 +471,12 @@ const NotesManager = () => {
         const file = item.getAsFile();
         if (!file) continue;
 
-        const r2_config = localStorage.getItem('r2_config');
-        if (!r2_config) {
+        const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+        if (!currentConfig) {
           setError('未配置 R2 存储信息');
           return;
         }
 
-        const currentConfig = JSON.parse(r2_config) as Config;
         if (!currentConfig.workerUrl) return;
 
         try {
@@ -548,21 +484,7 @@ const NotesManager = () => {
           const fileName = `assets/${Date.now()}-${file.name}`;
           formData.append('file', file, fileName);
 
-          await new Promise<void>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.addEventListener('load', () => {
-              if (xhr.status === 200) {
-                resolve();
-              } else {
-                reject(new Error('上传失败'));
-              }
-            });
-            xhr.addEventListener('error', () => {
-              reject(new Error('上传失败'));
-            });
-            xhr.open('POST', `${currentConfig.workerUrl}?action=upload&authorization=${encodeURIComponent(currentConfig.apiToken)}`);
-            xhr.send(formData);
-          });
+          await uploadWithProgress(currentConfig, formData);
 
           // 插入图片 Markdown
           const imageUrl = `${currentConfig.workerUrl.replace(/\/$/, '')}/file/${encodeURIComponent(fileName)}`;

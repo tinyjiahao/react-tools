@@ -1,22 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
-
-interface FileItem {
-  Key: string;
-  Size: number;
-  LastModified: string;
-  ETag?: string;
-}
+import type { Config, FileItem } from '../lib/types';
+import { STORAGE_KEYS, safeGetConfig } from '../lib/storage';
+import { callWorkerApi, uploadWithProgress } from '../lib/r2Api';
 
 interface DirectoryItem {
   name: string;
   path: string;
-}
-
-interface Config {
-  workerUrl: string;
-  apiToken: string;
 }
 
 const R2FileManager = () => {
@@ -44,29 +35,11 @@ const R2FileManager = () => {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [previewPanelVisible, setPreviewPanelVisible] = useState(false);
 
-  // 调用 Workers API
+  // 调用 Workers API —— 使用共享封装（见 src/lib/r2Api.ts），参数顺序 (action, config, body)
+  // 本地包装保留 (action, body, currentConfig) 形式以减少本组件内改动
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const callWorkerApi = useCallback(async (action: string, body?: any, currentConfig = config) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (currentConfig.apiToken) {
-      headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
-    }
-
-    const response = await fetch(`${currentConfig.workerUrl}?action=${action}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(errorData.error || `操作失败 (${response.status})`);
-    }
-
-    return response.json();
+  const callApi = useCallback(async (action: string, body?: Record<string, unknown>, currentConfig: Config = config) => {
+    return callWorkerApi(action, currentConfig, body);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.workerUrl, config.apiToken]);
 
@@ -80,7 +53,7 @@ const R2FileManager = () => {
     setError('');
     try {
       const prefix = directory ? (directory.endsWith('/') ? directory : `${directory}/`) : '';
-      const result = await callWorkerApi('list', { prefix }, currentConfig);
+      const result = await callApi('list', { prefix }, currentConfig);
 
       // 过滤出当前目录下的文件和子目录
       const allFiles = result.files || [];
@@ -132,164 +105,54 @@ const R2FileManager = () => {
     }
   }, [config, callWorkerApi, currentDirectory]);
 
-  // 加载配置
+  // 加载配置（仅在挂载时执行一次）
   useEffect(() => {
-    const r2_config = localStorage.getItem('r2_config');
-    if (r2_config) {
-      try {
-        const parsed = JSON.parse(r2_config);
-        // 验证配置有效
-        if (parsed.workerUrl) {
-          setConfig(parsed);
-          // 配置加载后再调用 API 获取文件列表
-          const loadInitialFiles = async () => {
-            setLoading(true);
-            setError('');
-            try {
-              const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-              };
-              if (parsed.apiToken) {
-                headers['Authorization'] = `Bearer ${parsed.apiToken}`;
-              }
-
-              // 使用当前目录作为 prefix
-              const prefix = currentDirectory ? (currentDirectory.endsWith('/') ? currentDirectory : `${currentDirectory}/`) : '';
-              const response = await fetch(`${parsed.workerUrl}?action=list`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ prefix }),
-              });
-
-              if (response.ok) {
-                const result = await response.json();
-                const allFiles = result.files || [];
-                const currentFiles: FileItem[] = [];
-                const dirSet = new Set<string>();
-
-                allFiles.forEach((file: FileItem) => {
-                  const key = file.Key;
-
-                  // 跳过与当前目录前缀完全相同的 key（目录本身）
-                  if (key === prefix || key === prefix.replace(/\/$/, '') || key + '/' === prefix) {
-                    return;
-                  }
-
-                  // 只处理以当前目录前缀开头的文件
-                  if (prefix && !key.startsWith(prefix)) {
-                    return;
-                  }
-
-                  const relativePath = prefix ? key.substring(prefix.length) : key;
-                  const firstSlashIndex = relativePath.indexOf('/');
-
-                  if (firstSlashIndex === -1) {
-                    currentFiles.push(file);
-                  } else {
-                    const dirName = relativePath.substring(0, firstSlashIndex);
-                    // 跳过空目录名和与当前目录同名的目录
-                    if (dirName && dirName !== currentDirectory) {
-                      dirSet.add(dirName);
-                    }
-                  }
-                });
-
-                setFiles(currentFiles);
-                setDirectories(
-                  Array.from(dirSet).sort().map(name => ({
-                    name,
-                    path: prefix + name
-                  }))
-                );
-              } else {
-                const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                setError(errorData.error || `加载失败 (${response.status})`);
-              }
-            } catch (err) {
-              setError((err as Error).message);
-            } finally {
-              setLoading(false);
-            }
-          };
-          loadInitialFiles();
-        } else {
-          setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
-        }
-      } catch (e) {
-        console.error('Failed to parse config:', e);
-        setError('配置读取失败，请重新配置');
-      }
-    } else {
-      // 没有配置时显示提示
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
+      return;
     }
+    if (!currentConfig.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+    setConfig(currentConfig);
+    // 配置加载后由下面的目录 effect 负责拉取列表，这里不再重复请求
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDirectory]);
+  }, []);
 
-  // 当目录变化时重新加载文件列表
+  // 当目录变化时重新加载文件列表（统一的数据源，避免并发重复请求）
   useEffect(() => {
-    // 只在配置已加载且不是初始加载时执行
-    if (config.workerUrl && currentDirectory !== undefined) {
-      listFiles(currentDirectory);
-    }
+    if (!config.workerUrl) return;
+    listFiles(currentDirectory);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDirectory]);
+  }, [currentDirectory, config.workerUrl, config.apiToken]);
 
   // 上传单个文件
   const uploadSingleFile = (file: File, queueIndex: number): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const formData = new FormData();
-      formData.append('file', file);
+    const formData = new FormData();
+    formData.append('file', file);
 
-      // 构建完整路径（目录 + 文件名）
-      const directory = uploadDirectory.trim();
-      const fileName = file.name;
-      const fullPath = directory ? `${directory}/${fileName}` : fileName;
+    // 构建完整路径（目录 + 文件名）
+    const directory = uploadDirectory.trim();
+    const fileName = file.name;
+    const fullPath = directory ? `${directory}/${fileName}` : fileName;
 
-      formData.append('path', fullPath);
+    formData.append('path', fullPath);
 
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadQueue(prev => prev.map((item, idx) =>
-            idx === queueIndex ? { ...item, progress: percentComplete } : item
-          ));
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          setUploadQueue(prev => prev.map((item, idx) =>
-            idx === queueIndex ? { ...item, status: 'success', progress: 100 } : item
-          ));
-          resolve();
-        } else {
-          let errorMsg = '上传失败';
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            errorMsg = errorData.error || '上传失败';
-          } catch {
-            // ignore
-          }
-          setUploadQueue(prev => prev.map((item, idx) =>
-            idx === queueIndex ? { ...item, status: 'error', error: errorMsg } : item
-          ));
-          reject(new Error(errorMsg));
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        const errorMsg = '上传失败，请检查网络连接';
-        setUploadQueue(prev => prev.map((item, idx) =>
-          idx === queueIndex ? { ...item, status: 'error', error: errorMsg } : item
-        ));
-        reject(new Error(errorMsg));
-      });
-
-      xhr.open('POST', `${config.workerUrl}?action=upload&authorization=${encodeURIComponent(config.apiToken)}`);
-      xhr.send(formData);
+    return uploadWithProgress(config, formData, (percentComplete) => {
+      setUploadQueue(prev => prev.map((item, idx) =>
+        idx === queueIndex ? { ...item, progress: percentComplete } : item
+      ));
+    }).then(() => {
+      setUploadQueue(prev => prev.map((item, idx) =>
+        idx === queueIndex ? { ...item, status: 'success', progress: 100 } : item
+      ));
+    }).catch((err: Error) => {
+      setUploadQueue(prev => prev.map((item, idx) =>
+        idx === queueIndex ? { ...item, status: 'error', error: err.message } : item
+      ));
+      throw err;
     });
   };
 
@@ -312,6 +175,10 @@ const R2FileManager = () => {
     }));
     setUploadQueue(initialQueue);
 
+    // 用局部变量累计成功/失败数量（避免读取闭包里的旧 uploadQueue 状态）
+    let successCount = 0;
+    let failedCount = 0;
+
     // 串行上传每个文件
     for (let i = 0; i < initialQueue.length; i++) {
       setUploadQueue(prev => prev.map((item, idx) =>
@@ -320,8 +187,10 @@ const R2FileManager = () => {
 
       try {
         await uploadSingleFile(initialQueue[i].file, i);
+        successCount++;
       } catch (err) {
         // 单个文件失败不影响其他文件继续上传
+        failedCount++;
         console.error(`文件 ${initialQueue[i].file.name} 上传失败:`, err);
       }
     }
@@ -330,11 +199,9 @@ const R2FileManager = () => {
     setTimeout(() => {
       listFiles(currentDirectory);
       setIsUploading(false);
-      // 检查是否有文件上传失败
-      const failedFiles = uploadQueue.filter(item => item.status === 'error');
-      const successCount = uploadQueue.filter(item => item.status === 'success').length;
 
-      if (failedFiles.length > 0) {
+      // 基于局部变量如实反映上传结果（修复之前永远报"成功"的 bug）
+      if (failedCount > 0) {
         setError(`部分文件上传失败：${successCount}/${uploadFiles.length} 成功`);
       } else {
         setCopiedUrl(`成功上传 ${uploadFiles.length} 个文件！`);
@@ -361,7 +228,7 @@ const R2FileManager = () => {
     setLoading(true);
     setError('');
     try {
-      await callWorkerApi('delete', { key });
+      await callApi('delete', { key });
       listFiles();
     } catch (err) {
       setError((err as Error).message);
@@ -377,14 +244,13 @@ const R2FileManager = () => {
       return;
     }
 
-    // 从 localStorage 读取最新配置
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) {
+    // 从 localStorage 读取最新配置（safeGetConfig 带容错）
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
       return;
     }
 
-    const currentConfig = JSON.parse(r2_config) as Config;
     if (!currentConfig.workerUrl) {
       setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
       return;
@@ -399,7 +265,7 @@ const R2FileManager = () => {
       const prefix = lastSlashIndex >= 0 ? oldKey.substring(0, lastSlashIndex + 1) : '';
       const newKey = prefix + newFileName;
 
-      await callWorkerApi('rename', { oldKey, newKey }, currentConfig);
+      await callApi('rename', { oldKey, newKey }, currentConfig);
 
       setShowRenameDialog(false);
       setNewFileName('');
@@ -543,10 +409,10 @@ const R2FileManager = () => {
 
   // 格式化文件大小
   const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes <= 0 || !Number.isFinite(bytes)) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
@@ -828,7 +694,8 @@ const R2FileManager = () => {
   const enterDirectory = (dirPath: string) => {
     setCurrentDirectory(dirPath);
     setUploadDirectory(dirPath); // 同时更新上传目录
-    listFiles(dirPath);
+    // 文件列表由 [currentDirectory] effect 统一拉取，此处不再手动调用，
+    // 否则会与 effect 触发的请求并发，快速点击时出现错乱
   };
 
   // 返回上级目录
@@ -838,7 +705,7 @@ const R2FileManager = () => {
     const parentDir = lastSlashIndex > 0 ? currentDirectory.substring(0, lastSlashIndex) : '';
     setCurrentDirectory(parentDir);
     setUploadDirectory(parentDir); // 同时更新上传目录
-    listFiles(parentDir);
+    // 同上，列表由 effect 统一拉取
   };
 
   // 获取面包屑路径

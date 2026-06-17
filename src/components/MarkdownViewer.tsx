@@ -4,19 +4,10 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
+import type { Config, FileItem } from '../lib/types';
+import { STORAGE_KEYS, safeGetConfig } from '../lib/storage';
+import { callWorkerApi, uploadWithProgress } from '../lib/r2Api';
 import 'highlight.js/styles/github-dark.css';
-
-interface FileItem {
-  Key: string;
-  Size: number;
-  LastModified: string;
-  ETag?: string;
-}
-
-interface Config {
-  workerUrl: string;
-  apiToken: string;
-}
 
 const MarkdownViewer = () => {
   const [config, setConfig] = useState<Config>({ workerUrl: '', apiToken: '' });
@@ -35,42 +26,23 @@ const MarkdownViewer = () => {
   const [newFileName, setNewFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 调用 Workers API
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const callWorkerApi = useCallback(async (action: string, body?: any, currentConfig = config) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (currentConfig.apiToken) {
-      headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
-    }
-
-    const response = await fetch(`${currentConfig.workerUrl}?action=${action}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(errorData.error || `操作失败 (${response.status})`);
-    }
-
-    return response.json();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 调用 Workers API —— 使用共享封装（见 src/lib/r2Api.ts）
+  // 注意：共享版参数顺序为 (action, config, body)
+  const callApi = useCallback(
+    (action: string, body: Record<string, unknown> | undefined, currentConfig: Config = config) =>
+      callWorkerApi(action, currentConfig, body),
+    [config]
+  );
 
   // 列出文件
   const listFiles = useCallback(async () => {
-    // 从 localStorage 重新读取最新配置
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) {
+    // 从 localStorage 重新读取最新配置（safeGetConfig 带容错，损坏值不再抛错）
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
       return;
     }
 
-    const currentConfig = JSON.parse(r2_config) as Config;
     if (!currentConfig.workerUrl) {
       setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
       return;
@@ -80,7 +52,7 @@ const MarkdownViewer = () => {
     setError('');
     try {
       // 传递 prefix 参数指定目录（如果 Worker 支持）
-      const result = await callWorkerApi('list', { prefix: 'markdown_file/' }, currentConfig);
+      const result = await callWorkerApi('list', currentConfig, { prefix: 'markdown_file/' });
       // 前端过滤：只保留 markdown_file 目录下的 Markdown 文件
       const markdownFiles = (result.files || []).filter((file: FileItem) => {
         const key = file.Key.toLowerCase();
@@ -102,60 +74,34 @@ const MarkdownViewer = () => {
 
   // 加载配置
   useEffect(() => {
-    const r2_config = localStorage.getItem('r2_config');
-    if (r2_config) {
-      try {
-        const parsed = JSON.parse(r2_config);
-        if (parsed.workerUrl) {
-          setConfig(parsed);
-          const loadInitialFiles = async () => {
-            setLoading(true);
-            setError('');
-            try {
-              const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-              };
-              if (parsed.apiToken) {
-                headers['Authorization'] = `Bearer ${parsed.apiToken}`;
-              }
-              const response = await fetch(`${parsed.workerUrl}?action=list`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ prefix: 'markdown_file/' }),
-              });
-              if (response.ok) {
-                const result = await response.json();
-                // 前端过滤：只保留 markdown_file 目录下的 Markdown 文件
-                const markdownFiles = (result.files || []).filter((file: FileItem) => {
-                  const key = file.Key.toLowerCase();
-                  return (key.startsWith('markdown_file/') || key.startsWith('markdown_file\\')) &&
-                         (key.endsWith('.md') || key.endsWith('.markdown'));
-                });
-                markdownFiles.sort((a: FileItem, b: FileItem) => {
-                  return new Date(b.LastModified).getTime() - new Date(a.LastModified).getTime();
-                });
-                setFiles(markdownFiles);
-              } else {
-                const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                setError(errorData.error || `加载失败 (${response.status})`);
-              }
-            } catch (err) {
-              setError((err as Error).message);
-            } finally {
-              setLoading(false);
-            }
-          };
-          loadInitialFiles();
-        } else {
-          setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
-        }
-      } catch (e) {
-        console.error('Failed to parse config:', e);
-        setError('配置读取失败，请重新配置');
-      }
-    } else {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig || !currentConfig.workerUrl) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
+      return;
     }
+    setConfig(currentConfig);
+
+    const loadInitialFiles = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const result = await callWorkerApi('list', currentConfig, { prefix: 'markdown_file/' });
+        const markdownFiles = (result.files || []).filter((file: FileItem) => {
+          const key = file.Key.toLowerCase();
+          return (key.startsWith('markdown_file/') || key.startsWith('markdown_file\\')) &&
+                 (key.endsWith('.md') || key.endsWith('.markdown'));
+        });
+        markdownFiles.sort((a: FileItem, b: FileItem) => {
+          return new Date(b.LastModified).getTime() - new Date(a.LastModified).getTime();
+        });
+        setFiles(markdownFiles);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialFiles();
   }, []);
 
   // 上传文件
@@ -182,45 +128,21 @@ const MarkdownViewer = () => {
       // 上传到 markdown_file 目录下
       formData.append('file', uploadFile, `markdown_file/${uploadFile.name}`);
 
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete);
-        }
+      await uploadWithProgress(config, formData, (percent) => {
+        setUploadProgress(percent);
       });
 
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          setUploadFile(null);
-          setUploadProgress(0);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          listFiles();
-          setToastMessage('上传成功！');
-          setShowToast(true);
-        } else {
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            setError(errorData.error || '上传失败');
-          } catch {
-            setError('上传失败');
-          }
-        }
-        setLoading(false);
-      });
-
-      xhr.addEventListener('error', () => {
-        setError('上传失败，请检查网络连接');
-        setLoading(false);
-      });
-
-      xhr.open('POST', `${config.workerUrl}?action=upload&authorization=${encodeURIComponent(config.apiToken)}`);
-      xhr.send(formData);
+      setUploadFile(null);
+      setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      listFiles();
+      setToastMessage('上传成功！');
+      setShowToast(true);
     } catch (err) {
       setError((err as Error).message);
+    } finally {
       setLoading(false);
     }
   };
@@ -236,7 +158,7 @@ const MarkdownViewer = () => {
     setLoading(true);
     setError('');
     try {
-      await callWorkerApi('delete', { key });
+      await callWorkerApi('delete', config, { key });
       if (selectedFile === key) {
         setSelectedFile(null);
         setMarkdownContent('');
@@ -265,14 +187,13 @@ const MarkdownViewer = () => {
       return;
     }
 
-    // 从 localStorage 读取最新配置
-    const r2_config = localStorage.getItem('r2_config');
-    if (!r2_config) {
+    // 从 localStorage 读取最新配置（safeGetConfig 带容错）
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) {
       setError('未配置 R2 存储信息，请点击设置按钮进行配置');
       return;
     }
 
-    const currentConfig = JSON.parse(r2_config) as Config;
     if (!currentConfig.workerUrl) {
       setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
       return;
@@ -286,7 +207,7 @@ const MarkdownViewer = () => {
       const prefix = 'markdown_file/';
       const newKey = prefix + newFileName;
 
-      await callWorkerApi('rename', { oldKey, newKey }, currentConfig);
+      await callWorkerApi('rename', currentConfig, { oldKey, newKey });
 
       // 如果重命名的是当前选中的文件，更新选中状态
       if (selectedFile === oldKey) {
@@ -426,10 +347,10 @@ const MarkdownViewer = () => {
 
   // 格式化文件大小
   const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes <= 0 || !Number.isFinite(bytes)) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 

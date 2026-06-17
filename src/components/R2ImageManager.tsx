@@ -1,18 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
-
-interface FileItem {
-  Key: string;
-  Size: number;
-  LastModified: string;
-  ETag?: string;
-}
-
-interface Config {
-  workerUrl: string;
-  apiToken: string;
-}
+import type { Config, FileItem } from '../lib/types';
+import { STORAGE_KEYS, safeGetConfig, safeSetItem } from '../lib/storage';
+import { callWorkerApi, uploadWithProgress } from '../lib/r2Api';
 
 const R2ImageManager = () => {
   const [config, setConfig] = useState<Config>({ workerUrl: '', apiToken: '' });
@@ -39,40 +30,22 @@ const R2ImageManager = () => {
     return imageExtensions.includes(ext);
   };
 
-  // 调用 Workers API
-  const callWorkerApi = useCallback(async (action: string, currentConfig: Config, body?: any) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (currentConfig.apiToken) {
-      headers['Authorization'] = `Bearer ${currentConfig.apiToken}`;
-    }
-
-    const response = await fetch(`${currentConfig.workerUrl}?action=${action}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(errorData.error || `操作失败 (${response.status})`);
-    }
-
-    return response.json();
-  }, []);
+  // 调用 Workers API —— 使用共享封装（见 src/lib/r2Api.ts）
+  const callApi = useCallback(
+    (action: string, currentConfig: Config, body?: Record<string, unknown>) =>
+      callWorkerApi(action, currentConfig, body),
+    []
+  );
 
   // 列出文件
   /* eslint-disable react-hooks/exhaustive-deps */
   const listFiles = useCallback(async () => {
-    const r2_image_config = localStorage.getItem('r2_image_config');
-    if (!r2_image_config) {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2ImageConfig);
+    if (!currentConfig) {
       setError('未配置图片存储信息，请点击设置按钮进行配置');
       return;
     }
 
-    const currentConfig = JSON.parse(r2_image_config) as Config;
     if (!currentConfig.workerUrl) {
       setError('未配置 Worker URL，请在设置中配置图片存储信息');
       return;
@@ -81,7 +54,7 @@ const R2ImageManager = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await callWorkerApi('list', currentConfig);
+      const result = await callApi('list', currentConfig);
       // 只显示图片文件
       const imageFiles = (result.files || []).filter((file: FileItem) => isImageFile(file.Key));
       // 按修改时间倒序排序
@@ -95,62 +68,41 @@ const R2ImageManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [callWorkerApi]);
+  }, [callApi]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
   // 加载配置
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
-    const r2_image_config = localStorage.getItem('r2_image_config');
-    if (r2_image_config) {
-      try {
-        const parsed = JSON.parse(r2_image_config);
-        if (parsed.workerUrl) {
-          setConfig(parsed);
-          setSettingsConfig(parsed);
-          const loadInitialFiles = async () => {
-            setLoading(true);
-            setError('');
-            try {
-              const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-              };
-              if (parsed.apiToken) {
-                headers['Authorization'] = `Bearer ${parsed.apiToken}`;
-              }
-              const response = await fetch(`${parsed.workerUrl}?action=list`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({}),
-              });
-              if (response.ok) {
-                const result = await response.json();
-                const imageFiles = (result.files || []).filter((file: FileItem) => isImageFile(file.Key));
-                imageFiles.sort((a: FileItem, b: FileItem) => {
-                  return new Date(b.LastModified).getTime() - new Date(a.LastModified).getTime();
-                });
-                setFiles(imageFiles);
-              } else {
-                const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                setError(errorData.error || `加载失败 (${response.status})`);
-              }
-            } catch (err) {
-              setError((err as Error).message);
-            } finally {
-              setLoading(false);
-            }
-          };
-          loadInitialFiles();
-        } else {
-          setError('未配置 Worker URL，请在设置中配置图片存储信息');
-        }
-      } catch (e) {
-        console.error('Failed to parse config:', e);
-        setError('配置读取失败，请重新配置');
-      }
-    } else {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2ImageConfig);
+    if (!currentConfig) {
       setError('未配置图片存储信息，请点击设置按钮进行配置');
+      return;
     }
+    if (!currentConfig.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置图片存储信息');
+      return;
+    }
+    setConfig(currentConfig);
+    setSettingsConfig(currentConfig);
+
+    const loadInitialFiles = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const result = await callWorkerApi('list', currentConfig);
+        const imageFiles = (result.files || []).filter((file: FileItem) => isImageFile(file.Key));
+        imageFiles.sort((a: FileItem, b: FileItem) => {
+          return new Date(b.LastModified).getTime() - new Date(a.LastModified).getTime();
+        });
+        setFiles(imageFiles);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialFiles();
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -179,35 +131,10 @@ const R2ImageManager = () => {
         const formData = new FormData();
         formData.append('file', file);
 
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const totalProgress = Math.round(((i * e.total + e.loaded) / (uploadFiles.length * e.total)) * 100);
-            setUploadProgress(totalProgress);
-          }
-        });
-
-        await new Promise<void>((resolve, reject) => {
-          xhr.addEventListener('load', () => {
-            if (xhr.status === 200) {
-              resolve();
-            } else {
-              try {
-                const errorData = JSON.parse(xhr.responseText);
-                reject(new Error(errorData.error || '上传失败'));
-              } catch {
-                reject(new Error('上传失败'));
-              }
-            }
-          });
-
-          xhr.addEventListener('error', () => {
-            reject(new Error('上传失败，请检查网络连接'));
-          });
-
-          xhr.open('POST', `${config.workerUrl}?action=upload&authorization=${encodeURIComponent(config.apiToken)}`);
-          xhr.send(formData);
+        await uploadWithProgress(config, formData, (percent) => {
+          // 把单文件进度换算成整体进度
+          const totalProgress = Math.round(((i * 100 + percent) / uploadFiles.length));
+          setUploadProgress(Math.min(totalProgress, 100));
         });
       }
 
@@ -379,7 +306,7 @@ const R2ImageManager = () => {
 
   // 保存设置
   const saveSettings = () => {
-    localStorage.setItem('r2_image_config', JSON.stringify(settingsConfig));
+    safeSetItem(STORAGE_KEYS.r2ImageConfig, JSON.stringify(settingsConfig));
     setConfig(settingsConfig);
     setShowSettingsDialog(false);
     setToastMessage('配置已保存！');
@@ -390,7 +317,7 @@ const R2ImageManager = () => {
   // 清除配置
   const clearConfig = () => {
     if (window.confirm('确定要清除图片存储配置吗？')) {
-      localStorage.removeItem('r2_image_config');
+      localStorage.removeItem(STORAGE_KEYS.r2ImageConfig);
       setConfig({ workerUrl: '', apiToken: '' });
       setSettingsConfig({ workerUrl: '', apiToken: '' });
       setShowSettingsDialog(false);
@@ -403,10 +330,10 @@ const R2ImageManager = () => {
 
   // 格式化文件大小
   const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (!bytes || bytes <= 0 || !Number.isFinite(bytes)) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
