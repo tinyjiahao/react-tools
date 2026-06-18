@@ -162,10 +162,9 @@ const NotesManager = () => {
           // 从 R2 加载最新内容
           const latestNote = await loadNoteContent(savedNote.id);
           if (latestNote) {
-            originalNoteRef.current = { ...latestNote };
-            updateSelectedNote(latestNote);
+            updateSelectedNote(latestNote, true);
           } else {
-            updateSelectedNote(savedNote);
+            updateSelectedNote(savedNote, true);
           }
         }
       }
@@ -209,12 +208,18 @@ const NotesManager = () => {
   }, [selectedNote]);
 
   // 同步 ref 和 state
-  const updateSelectedNote = useCallback((note: Note | null | ((prev: Note | null) => Note | null)) => {
+  // resetOriginal=true 表示这是一次"笔记切换/新建"，需要把"原始内容基准"重置为该笔记的初始内容，
+  // 否则 saveNote 的"内容是否有变化"比较会基于错误的基准线（导致永不保存或重复保存）。
+  // 编辑输入（onChange）调用本函数时传 resetOriginal=false，绝不移动 originalNoteRef。
+  const updateSelectedNote = useCallback((
+    note: Note | null | ((prev: Note | null) => Note | null),
+    resetOriginal: boolean = false
+  ) => {
     setSelectedNote(prev => {
       const newNote = typeof note === 'function' ? (note as (prev: Note | null) => Note | null)(prev) : note;
       currentNoteRef.current = newNote;
-      // 当设置新笔记（而非编辑更新）时，保存原始内容
-      if (newNote && typeof note !== 'function') {
+      // 仅在切换/新建笔记时重置原始内容基准；编辑更新不触碰它
+      if (resetOriginal && newNote) {
         originalNoteRef.current = { ...newNote };
       }
       return newNote;
@@ -316,15 +321,14 @@ const NotesManager = () => {
       flushSave();
     }
 
-    // 先用列表数据显示，避免等待
-    updateSelectedNote(note);
+    // 先用列表数据显示，避免等待（切换笔记：重置原始内容基准）
+    updateSelectedNote(note, true);
 
     // 然后从 R2 加载最新内容
     const latestNote = await loadNoteContent(note.id);
     if (latestNote) {
-      // 保存原始内容用于比较
-      originalNoteRef.current = { ...latestNote };
-      updateSelectedNote(latestNote);
+      // 用从 R2 读到的最新内容作为原始基准（updateSelectedNote 传 true 重置）
+      updateSelectedNote(latestNote, true);
       // 同时更新列表中的数据
       setNotes(prev => prev.map(n => n.id === latestNote.id ? latestNote : n));
     }
@@ -414,9 +418,10 @@ const NotesManager = () => {
     };
 
     setNotes(prev => [newNote, ...prev]);
-    // 不设置原始内容，让新笔记能够正常保存
+    // 新笔记：原始基准设为 null，保证首次 saveNote 一定写盘（saveNote 中 original 为 null 即视为有变化）
     originalNoteRef.current = null;
-    updateSelectedNote(newNote);
+    // 这里不能传 true 重置基准（会把基准设为空笔记，导致 saveNote 认为"无变化"不保存）
+    updateSelectedNote(newNote, false);
 
     // 立即保存到 R2
     saveNote(newNote);
@@ -623,7 +628,7 @@ const NotesManager = () => {
                   type="text"
                   className="note-title-input"
                   value={selectedNote.title}
-                  onChange={(e) => updateSelectedNote({ ...selectedNote, title: e.target.value })}
+                  onChange={(e) => updateSelectedNote({ ...selectedNote, title: e.target.value }, false)}
                   placeholder="笔记标题"
                 />
                 <div className="editor-header-actions">
@@ -714,7 +719,7 @@ const NotesManager = () => {
                   height="100%"
                   language={editorLanguage}
                   value={selectedNote.content}
-                  onChange={(value) => updateSelectedNote({ ...selectedNote, content: value || '' })}
+                  onChange={(value) => updateSelectedNote({ ...selectedNote, content: value || '' }, false)}
                   theme={editorTheme}
                   onMount={(editor, monaco) => {
                     // 添加 ESC 键监听来关闭搜索框
