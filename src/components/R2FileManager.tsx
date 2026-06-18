@@ -103,7 +103,7 @@ const R2FileManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [config, callWorkerApi, currentDirectory]);
+  }, [config, callApi, currentDirectory]);
 
   // 加载配置（仅在挂载时执行一次）
   useEffect(() => {

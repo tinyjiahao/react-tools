@@ -26,14 +26,6 @@ const MarkdownViewer = () => {
   const [newFileName, setNewFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 调用 Workers API —— 使用共享封装（见 src/lib/r2Api.ts）
-  // 注意：共享版参数顺序为 (action, config, body)
-  const callApi = useCallback(
-    (action: string, body: Record<string, unknown> | undefined, currentConfig: Config = config) =>
-      callWorkerApi(action, currentConfig, body),
-    [config]
-  );
-
   // 列出文件
   const listFiles = useCallback(async () => {
     // 从 localStorage 重新读取最新配置（safeGetConfig 带容错，损坏值不再抛错）
@@ -70,7 +62,7 @@ const MarkdownViewer = () => {
     } finally {
       setLoading(false);
     }
-  }, [callWorkerApi]);
+  }, []);
 
   // 加载配置
   useEffect(() => {
