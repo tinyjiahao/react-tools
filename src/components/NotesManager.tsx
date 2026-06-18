@@ -222,19 +222,26 @@ const NotesManager = () => {
   }, []);
 
   // 自动保存笔记（防抖后触发）
-  const saveNote = useCallback(async (note: Note) => {
+  // force=true 时跳过"内容无变化"判断（手动保存必须强制写盘并给用户明确反馈，
+  // 否则在自动保存已成功的情形下点保存会静默 return，用户感觉"没反应"）
+  const saveNote = useCallback(async (note: Note, force: boolean = false) => {
     const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
-    if (!currentConfig || !currentConfig.workerUrl) return;
-
-    // 检查内容是否有变化
-    const original = originalNoteRef.current;
-    if (original &&
-        original.id === note.id &&
-        original.title === note.title &&
-        original.content === note.content &&
-        JSON.stringify(original.tags) === JSON.stringify(note.tags)) {
-      // 内容没有变化，不保存
+    if (!currentConfig || !currentConfig.workerUrl) {
+      setError('未配置 R2 存储信息，请点击设置按钮进行配置');
       return;
+    }
+
+    // 检查内容是否有变化（手动保存强制跳过该判断）
+    if (!force) {
+      const original = originalNoteRef.current;
+      if (original &&
+          original.id === note.id &&
+          original.title === note.title &&
+          original.content === note.content &&
+          JSON.stringify(original.tags) === JSON.stringify(note.tags)) {
+        // 自动保存场景下内容没有变化，不保存（静默）
+        return;
+      }
     }
 
     // 并发控制：如果已有保存正在进行，标记需要再次保存（保存最新内容）
@@ -324,15 +331,16 @@ const NotesManager = () => {
   }, [loadNoteContent, updateSelectedNote, selectedNote, flushSave]);
 
   // 手动保存笔记 - 使用 ref 中的最新数据
+  // 手动保存强制写盘（force=true），并始终给用户反馈，避免"点了没反应"
   const handleManualSave = useCallback(async () => {
     const latestNote = currentNoteRef.current;
     if (!latestNote) return;
-    // 取消待执行的自动保存，以手动保存为准（手动保存始终触发，不受"无变化"判断限制）
+    // 取消待执行的自动保存，以手动保存为准
     if (autoSaveRef.current) {
       clearTimeout(autoSaveRef.current);
       autoSaveRef.current = null;
     }
-    await saveNote(latestNote);
+    await saveNote(latestNote, true);
   }, [saveNote]);
 
   // 防抖自动保存 - 使用 ref 获取最新内容
