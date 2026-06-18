@@ -6,8 +6,8 @@
 //   - ALLOWED_ORIGINS: 允许的跨域来源，逗号分隔（如 "https://your-app.pages.dev,http://localhost:3000"）
 //                      未配置时回退到 "*"（仅适合本地调试，生产请务必配置）
 
-// 允许的文件 key 前缀（其余路径一律拒绝，避免越权访问任意对象）
-const ALLOWED_PREFIXES = ['notes/', 'markdown_file/', 'assets/'];
+// 允许的文件 key 前缀已移除：R2FileManager 是通用文件管理器，不应限制目录。
+// 路径穿越防护（见 isKeySafe）才是安全关键。
 // 图片扩展名（用于 /file/ 内联展示与公开访问判断）
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
 // 单文件上传大小上限（100MB，R2 / Worker 的合理上限）
@@ -39,13 +39,17 @@ function buildCorsHeaders(env, requestOrigin) {
 
 /**
  * 校验 key 是否安全：
- * - 拒绝包含 ".."（路径穿越）、NUL 字符、以 "/" 开头
- * - 限制在已知前缀之下（防止越权读写桶内任意对象）
+ * - 拒绝包含 ".."（路径穿越）、NUL 字符、以 "/" 开头（绝对路径）
+ * - 拒绝空 key
+ *
+ * 不再强制前缀白名单：R2FileManager 是通用文件管理器，允许用户把文件
+ * 上传/重命名到任意目录（含根目录）。路径穿越防护才是真正的安全关键
+ * （防止 /file/../secret 读到预期外对象），保留即可。
  */
 function isKeySafe(key) {
   if (!key || typeof key !== 'string') return false;
   if (key.includes('..') || key.includes('\0') || key.startsWith('/')) return false;
-  return ALLOWED_PREFIXES.some(prefix => key.startsWith(prefix));
+  return true;
 }
 
 /** 从请求中读取 token，仅认 Authorization header（不再从 URL query 读取，避免泄露进日志） */

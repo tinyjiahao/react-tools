@@ -216,7 +216,7 @@ react-tools/
 - **fail-closed 鉴权**：未配置 `API_TOKEN` 时拒绝所有写操作（不再"放行"）。
 - **Token 仅认 Header**：只从 `Authorization: Bearer xxx` 读取，不再从 URL query 读取，避免泄露进访问日志/浏览器历史。
 - **CORS 来源白名单**：根据 `ALLOWED_ORIGINS` 反射匹配的 Origin，并设 `Vary: Origin`（不再无条件 `*`）。
-- **Key 安全校验**：`/file/`、upload、delete、rename 拒绝含 `..`、NUL、以 `/` 开头、或不在已知前缀（`notes/`、`markdown_file/`、`assets/`）下的 key。
+- **Key 安全校验**：`/file/`、upload、delete、rename 拒绝含 `..`、NUL、以 `/` 开头的 key（防路径穿越）；R2FileManager 作为通用文件管理器，允许任意目录前缀。
 - **分层鉴权**：`/file/` 路径中，图片扩展名（jpg/png/gif/webp/svg/bmp/ico）免鉴权以便直接 `<img>` 引用，其余需 token。
 - **缓存策略**：可变内容（`notes/`、`markdown_file/`）输出 `Cache-Control: no-cache`，其余静态资源才缓存 1 年。
 - 错误响应不回传内部 `error.message`。
