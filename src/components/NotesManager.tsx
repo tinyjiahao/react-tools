@@ -273,9 +273,9 @@ const NotesManager = () => {
 
       await uploadWithProgress(currentConfig, formData);
 
-      // 更新笔记列表中的时间
+      // 保存成功后把完整笔记（含 title/content/tags）同步回列表，确保刷新前列表即最新
       setNotes(prev => prev.map(n =>
-        n.id === note.id ? { ...n, updatedAt: nowIso } : n
+        n.id === note.id ? { ...n, ...note, updatedAt: nowIso } : n
       ));
 
       // 保存成功后更新原始内容
@@ -581,7 +581,14 @@ const NotesManager = () => {
                   type="text"
                   className="note-title-input"
                   value={selectedNote.title}
-                  onChange={(e) => updateSelectedNote({ ...selectedNote, title: e.target.value }, false)}
+                  onChange={(e) => {
+                    const newTitle = e.target.value;
+                    // 同时更新当前选中笔记与左侧列表中的标题，保证列表实时反映改名
+                    updateSelectedNote({ ...selectedNote, title: newTitle }, false);
+                    setNotes(prev => prev.map(n =>
+                      n.id === selectedNote.id ? { ...n, title: newTitle } : n
+                    ));
+                  }}
                   placeholder="笔记标题"
                 />
                 <div className="editor-header-actions">
