@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import jsonpath from 'jsonpath';
 import MessageToast from './MessageToast';
@@ -166,7 +166,7 @@ const JsonFormatter = () => {
     }
   };
 
-  const handleEditorDidMount = (editor: any, monaco: any) => {
+  const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
   };
 

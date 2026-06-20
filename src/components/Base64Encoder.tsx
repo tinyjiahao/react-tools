@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import pako from 'pako';
 import SnappyJS from 'snappyjs';
 import MessageToast from './MessageToast';

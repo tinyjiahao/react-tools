@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from './Icon';
 
 // TipTap/ProseMirror 节点类型定义

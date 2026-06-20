@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
@@ -469,53 +469,6 @@ const NotesManager = () => {
       setLoading(false);
       setShowDeleteConfirm(false);
       setDeletingNoteId(null);
-    }
-  };
-
-  // 处理图片粘贴上传 (暂未使用，保留用于 Quill 自定义图片上传)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (!file) continue;
-
-        const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
-        if (!currentConfig) {
-          setError('未配置 R2 存储信息');
-          return;
-        }
-
-        if (!currentConfig.workerUrl) return;
-
-        try {
-          const formData = new FormData();
-          const fileName = `assets/${Date.now()}-${file.name}`;
-          formData.append('file', file, fileName);
-
-          await uploadWithProgress(currentConfig, formData);
-
-          // 插入图片 Markdown
-          const imageUrl = `${currentConfig.workerUrl.replace(/\/$/, '')}/file/${encodeURIComponent(fileName)}`;
-          const imageMarkdown = `![${file.name}](${imageUrl})\n`;
-
-          updateSelectedNote(prev => prev ? {
-            ...prev,
-            content: prev.content + imageMarkdown
-          } : null);
-
-          setToastMessage('图片已上传');
-          setShowToast(true);
-        } catch (err) {
-          setError(`图片上传失败: ${(err as Error).message}`);
-        }
-
-        break;
-      }
     }
   };
 

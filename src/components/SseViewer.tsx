@@ -251,7 +251,7 @@ const ToolUseCard: React.FC<{
   toolId: string;
   input: Record<string, unknown>;
   onCopy: (text: string) => void;
-}> = ({ toolName, toolId, input }) => {
+}> = ({ toolName, input }) => {
   const [expanded, setExpanded] = useState(true);
 
   // 特殊处理文件读取类的 tool

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Icon from './Icon';
 import MessageToast from './MessageToast';
 

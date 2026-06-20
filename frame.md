@@ -8,12 +8,12 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| 框架 | React 19 + TypeScript 4.9 | CRA（react-scripts 5）脚手架 |
-| 构建 | react-scripts / webpack | `npm run build` 产出到 `build/` |
+| 框架 | React 19 + TypeScript 5.9 | 新 JSX transform（无需 `import React`） |
+| 构建 | Vite 8 + @vitejs/plugin-react | `npm run build` 产出到 `build/`；dev server 端口 3000 |
 | 部署 | Cloudflare Pages | 静态托管，依赖 `_redirects` / `_routes.json` |
 | 后端 | Cloudflare Worker | 独立部署，作为 R2 存储代理（见 `docs/worker.js`） |
 | 存储 | Cloudflare R2 | 对象存储，存放文件/图片/笔记/Markdown |
-| 编辑器 | Monaco Editor | JSON / Markdown 等代码编辑 |
+| 编辑器 | Monaco Editor | **本地打包**（`src/lib/monaco.ts` 配置 worker 与 loader，不依赖 CDN） |
 | 渲染 | react-markdown + remark-gfm + rehype-highlight | Markdown 渲染 |
 | 其他 | highlight.js、qrcode.react、pako、snappyjs、react-diff-view、html2canvas、jsonpath、diff | 各工具专用依赖 |
 
@@ -23,33 +23,36 @@
 
 ```
 react-tools/
-├── public/                     # 静态资源（构建时原样拷贝）
-│   ├── index.html              # HTML 模板（含 SEO meta）
-│   ├── _redirects              # SPA 回退规则：/* /index.html 200
-│   ├── _routes.json            # Pages 路由/缓存控制
-│   ├── manifest.json           # PWA 清单（DevTools）
+├── index.html                 # Vite 入口 HTML（项目根，含 SEO meta 与 /src/index.tsx 入口脚本）
+├── vite.config.ts             # Vite 配置（react 插件、输出目录 build、端口 3000）
+├── tsconfig.json              # 应用 TS 配置（strict + noUnusedLocals/Parameters）
+├── tsconfig.node.json         # vite.config.ts 的 TS 配置（composite，供 tsc -b 引用）
+├── public/                    # 静态资源（构建时原样拷贝到 build/）
+│   ├── _redirects             # SPA 回退规则：/* /index.html 200
+│   ├── _routes.json           # Pages 路由/缓存控制
+│   ├── manifest.json          # PWA 清单（DevTools）
 │   ├── robots.txt / sitemap.xml
-│   └── docs/km.txt             # 知识库样例数据
+│   └── docs/km.txt            # 知识库样例数据
 ├── src/
-│   ├── index.tsx               # 入口：createRoot → <App/>
-│   ├── App.tsx                 # 主框架：导航/路由/布局切换/主题
-│   ├── App.css                 # 全局样式 + CSS 变量主题系统
-│   ├── index.css               # 基础 reset
-│   ├── lib/                    # 共享模块（R2/Worker 通信、localStorage、共享类型）
-│   │   ├── types.ts            # Config / FileItem（4 个 R2 组件共用）
-│   │   ├── storage.ts          # safeGetConfig / safeSetItem / STORAGE_KEYS 常量
-│   │   └── r2Api.ts            # callWorkerApi / uploadWithProgress（token 走 header）
-│   ├── components/             # 全部工具组件（详见 §4）
-│   └── types/                  # 第三方类型声明（snappyjs）
+│   ├── index.tsx              # 入口：createRoot → <App/>（先 import './lib/monaco' 初始化编辑器）
+│   ├── vite-env.d.ts          # Vite 客户端类型（含 ?worker 模块声明）
+│   ├── App.tsx                # 主框架：导航/路由/布局切换/主题
+│   ├── App.css                # 全局样式 + CSS 变量主题系统
+│   ├── index.css              # 基础 reset
+│   ├── lib/                   # 共享模块
+│   │   ├── types.ts           # Config / FileItem（4 个 R2 组件共用）
+│   │   ├── storage.ts         # safeGetConfig / safeSetItem / STORAGE_KEYS 常量
+│   │   ├── r2Api.ts           # callWorkerApi / uploadWithProgress（token 走 header）
+│   │   └── monaco.ts          # Monaco 本地打包配置（loader.config + self.MonacoEnvironment + 5 个 ?worker）
+│   ├── components/            # 全部工具组件（详见 §4）
+│   └── types/                 # 第三方类型声明（snappyjs）
 ├── docs/
-│   ├── worker.js               # Cloudflare Worker 源码（R2 代理）
-│   ├── CLOUDFLARE_R2_SETUP.md  # R2 配置说明
+│   ├── worker.js              # Cloudflare Worker 源码（R2 代理）
+│   ├── CLOUDFLARE_R2_SETUP.md # R2 配置说明
 │   └── markdown_page.md
 ├── data/
-│   └── gante.json              # 性能分析器样例数据
-├── build/                      # 生产构建产物（gitignore）
-├── .env                        # GENERATE_SOURCEMAP=false
-├── tsconfig.json
+│   └── gante.json             # 性能分析器样例数据
+├── build/                     # 生产构建产物（gitignore）
 └── package.json
 ```
 
@@ -248,12 +251,14 @@ react-tools/
 ## 7. 命令脚本
 
 ```bash
-npm start    # 本地开发（http://localhost:3000）
-npm run build # 生产构建到 build/
-npm test      # Jest 测试（react-scripts test）
+npm run dev    # 本地开发（Vite dev server，http://localhost:3000）
+npm run build  # tsc -b 类型检查 + vite build，生产构建到 build/
+npm run preview # 预览生产构建产物
 ```
 
-> 注：项目 `.env` 设置 `GENERATE_SOURCEMAP=false`，构建时关闭 source map 以消除第三方库警告。
+> 注：项目已从 CRA 迁移到 Vite。构建产物输出目录保持 `build/`，Cloudflare Pages 部署配置无需改动。
+> 测试套件（Jest）随迁移移除，后续如需补测试建议使用 Vitest。
+> Monaco 编辑器本地打包（`src/lib/monaco.ts`），不依赖 CDN。
 
 ---
 

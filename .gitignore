@@ -75,6 +75,7 @@ Temporary Items
 
 # 类型检查
 tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # 其他
 .vercel

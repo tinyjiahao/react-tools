@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
 import type { Config, FileItem } from '../lib/types';

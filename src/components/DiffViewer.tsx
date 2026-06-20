@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { parseDiff, Diff, Hunk } from 'react-diff-view';
 import * as DiffLib from 'diff';
 import 'react-diff-view/style/index.css';
@@ -70,7 +70,7 @@ const DiffViewer = () => {
     let hunkLinesOld = 0;
     let hunkLinesNew = 0;
 
-    diff.forEach((part, index) => {
+    diff.forEach((part) => {
       const lines = part.value.split('\n');
       // 移除最后一个空行（如果有的话）
       if (lines.length > 0 && lines[lines.length - 1] === '') {

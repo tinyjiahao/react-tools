@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import Icon from './Icon';
 import { safeSetItem, safeGetJSON } from '../lib/storage';
