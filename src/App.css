@@ -7182,3 +7182,87 @@ body {
     flex-direction: column;
   }
 }
+
+/* ===== 备忘录：历史版本 ===== */
+.history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--cf-bg-secondary);
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  color: var(--cf-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-btn:hover {
+  background: var(--cf-bg-hover);
+  border-color: var(--cf-orange);
+}
+
+.note-history-dialog {
+  max-width: 560px;
+  max-height: 80vh;
+}
+
+.note-history-hint {
+  font-size: 13px;
+  color: var(--cf-text-secondary);
+  margin-bottom: 16px;
+}
+
+.note-history-loading,
+.note-history-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--cf-text-secondary);
+  font-size: 14px;
+}
+
+.note-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.note-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--cf-bg-secondary);
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+}
+
+.note-history-item-info {
+  flex: 1;
+  min-width: 0;
+  margin-right: 12px;
+}
+
+.note-history-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cf-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-history-item-meta {
+  font-size: 12px;
+  color: var(--cf-text-secondary);
+  margin-top: 4px;
+}
+
+.note-history-restore-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}

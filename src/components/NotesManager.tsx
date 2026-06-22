@@ -69,6 +69,12 @@ const NotesManager = () => {
   const currentNoteRef = useRef<Note | null>(null);
   // 存储原始笔记内容，用于比较是否有变化
   const originalNoteRef = useRef<Note | null>(null);
+  // 记录每个笔记最近一次生成历史的时间戳，用于节流（5 分钟内不重复存历史）
+  const lastHistoryAtRef = useRef<Record<string, number>>({});
+  // 历史版本弹窗状态
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [historyList, setHistoryList] = useState<Array<{ id: string; note: Note; savedAt: string }>>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   // 保存并发控制：是否正在保存、是否在保存期间又产生了新的改动
   const isSavingRef = useRef(false);
   const isSavePendingRef = useRef(false);
@@ -280,6 +286,14 @@ const NotesManager = () => {
         n.id === note.id ? { ...n, ...note, updatedAt: nowIso } : n
       ));
 
+      // 在更新 originalNoteRef 前，把被覆盖的旧版本存为历史快照（节流 + 数量上限）
+      const oldVersion = originalNoteRef.current;
+      if (oldVersion && oldVersion.id === note.id && oldVersion.content) {
+        saveHistorySnapshot(currentConfig, oldVersion).catch(err => {
+          console.warn('历史版本保存失败（不影响主笔记）:', err);
+        });
+      }
+
       // 保存成功后更新原始内容
       originalNoteRef.current = { ...note, updatedAt: nowIso };
 
@@ -303,6 +317,123 @@ const NotesManager = () => {
       }
     }
   }, []);
+
+  // 将一个旧版本存为历史快照。
+  // 设计：历史放在 notes_history/{noteId}/ 前缀下，与主笔记 notes/ 分离，
+  // 因此 Worker 的 list(prefix:'notes/') 不会列出历史，列表 UI 零干扰。
+  // 节流：同一笔记 5 分钟内只生成一条历史，避免高频自动保存刷爆。
+  // 数量：保留最近 10 条，多余的删掉。
+  const saveHistorySnapshot = useCallback(async (config: Config, note: Note) => {
+    const now = Date.now();
+    const last = lastHistoryAtRef.current[note.id] || 0;
+    if (now - last < 5 * 60 * 1000) {
+      // 节流窗口内，跳过（但仍允许真正切笔记后第一次保存生成历史）
+      return;
+    }
+    lastHistoryAtRef.current[note.id] = now;
+
+    try {
+      const historyId = `${now}`;
+      const fileName = `notes_history/${note.id}/${historyId}.json`;
+      const content = JSON.stringify({
+        ...note,
+        historySavedAt: new Date(now).toISOString(),
+      }, null, 2);
+
+      const formData = new FormData();
+      formData.append('file', new Blob([content], { type: 'application/json' }), fileName);
+      await uploadWithProgress(config, formData);
+
+      // 异步清理超出 10 条的旧历史（不阻塞保存）
+      cleanupHistory(config, note.id).catch(err => {
+        console.warn('历史版本清理失败:', err);
+      });
+    } catch (err) {
+      // 历史失败不影响主笔记保存
+      console.warn('保存历史快照失败:', err);
+    }
+  }, []);
+
+  // 列出某篇笔记的历史版本
+  const listHistory = useCallback(async (noteId: string) => {
+    const currentConfig = safeGetConfig(STORAGE_KEYS.r2Config);
+    if (!currentConfig) return [];
+
+    setLoadingHistory(true);
+    try {
+      const result = await callWorkerApi('list', currentConfig, { prefix: `notes_history/${noteId}/` });
+      const files: FileItem[] = result.files || [];
+      const histories: Array<{ id: string; note: Note; savedAt: string }> = [];
+
+      for (const file of files) {
+        try {
+          const baseUrl = currentConfig.workerUrl.replace(/\/$/, '');
+          const resp = await fetch(`${baseUrl}/file/${encodeURIComponent(file.Key)}?_t=${Date.now()}`, {
+            headers: currentConfig.apiToken ? { Authorization: `Bearer ${currentConfig.apiToken}` } : {},
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const id = file.Key.split('/').pop()?.replace('.json', '') || file.Key;
+            histories.push({
+              id,
+              note: { id: noteId, ...data } as Note,
+              savedAt: data.historySavedAt || file.LastModified,
+            });
+          }
+        } catch {
+          // 单条历史读取失败跳过
+        }
+      }
+
+      // 按时间倒序（最新的在前）
+      histories.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+      return histories;
+    } catch (err) {
+      console.error('加载历史版本失败:', err);
+      setError(`加载历史失败: ${(err as Error).message}`);
+      return [];
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
+  // 清理：只保留最近 10 条历史
+  const cleanupHistory = useCallback(async (config: Config, noteId: string) => {
+    const result = await callWorkerApi('list', config, { prefix: `notes_history/${noteId}/` });
+    const files: FileItem[] = result.files || [];
+    if (files.length <= 10) return;
+
+    // 按时间排序，删除多余的（保留最新 10 条）
+    files.sort((a, b) => new Date(b.LastModified).getTime() - new Date(a.LastModified).getTime());
+    const toDelete = files.slice(10);
+    for (const file of toDelete) {
+      try {
+        await callWorkerApi('delete', config, { key: file.Key });
+      } catch {
+        // 删除失败不影响整体流程
+      }
+    }
+  }, []);
+
+  // 打开历史版本弹窗
+  const openHistoryDialog = useCallback(async () => {
+    if (!selectedNote) return;
+    setShowHistoryDialog(true);
+    const list = await listHistory(selectedNote.id);
+    setHistoryList(list);
+  }, [selectedNote, listHistory]);
+
+  // 恢复某个历史版本（覆盖当前笔记内容，触发保存）
+  const restoreHistory = useCallback(async (historyNote: Note) => {
+    const updated = { ...selectedNote, ...historyNote, id: selectedNote!.id };
+    updateSelectedNote(updated, true);
+    setNotes(prev => prev.map(n => n.id === updated.id ? { ...n, ...updated } : n));
+    setShowHistoryDialog(false);
+    setToastMessage('已恢复历史版本');
+    setShowToast(true);
+    // 恢复后强制保存
+    await saveNote(updated, true);
+  }, [selectedNote, updateSelectedNote, saveNote]);
 
   // 立即执行待保存（取消防抖定时器，同步触发一次保存）
   const flushSave = useCallback(() => {
@@ -694,6 +825,17 @@ const NotesManager = () => {
                     ))}
                   </select>
                 </div>
+                <div className="editor-toolbar-group">
+                  <button
+                    type="button"
+                    className="history-btn"
+                    onClick={openHistoryDialog}
+                    title="查看历史版本"
+                  >
+                    <Icon name="clock" size={14} />
+                    历史
+                  </button>
+                </div>
               </div>
               <div className="editor-content">
                 <Editor
@@ -824,6 +966,48 @@ const NotesManager = () => {
               >
                 {loading ? '删除中...' : '确认删除'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHistoryDialog && (
+        <div className="settings-overlay" onClick={() => setShowHistoryDialog(false)}>
+          <div className="settings-dialog note-history-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-header">
+              <h2>历史版本</h2>
+              <button className="close-btn" onClick={() => setShowHistoryDialog(false)}>
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+            <div className="settings-content">
+              <p className="note-history-hint">保留最近 10 个历史版本。点击「恢复」会用该版本覆盖当前内容（可再次保存）。</p>
+              {loadingHistory ? (
+                <div className="note-history-loading">加载中...</div>
+              ) : historyList.length === 0 ? (
+                <div className="note-history-empty">暂无历史版本</div>
+              ) : (
+                <div className="note-history-list">
+                  {historyList.map((item) => (
+                    <div key={item.id} className="note-history-item">
+                      <div className="note-history-item-info">
+                        <div className="note-history-item-title">{item.note.title || '无标题'}</div>
+                        <div className="note-history-item-meta">
+                          {new Date(item.savedAt).toLocaleString('zh-CN')}
+                          {item.note.language ? ` · ${item.note.language}` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary note-history-restore-btn"
+                        onClick={() => restoreHistory(item.note)}
+                      >
+                        恢复
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
