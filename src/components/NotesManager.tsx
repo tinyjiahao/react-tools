@@ -6,18 +6,19 @@ import type { Config, FileItem } from '../lib/types';
 import { STORAGE_KEYS, safeGetConfig } from '../lib/storage';
 import { callWorkerApi, uploadWithProgress } from '../lib/r2Api';
 
+// Monaco 编辑器主题选项
+type MonacoTheme = 'vs' | 'vs-dark' | 'hc-black';
+type MonacoLanguage = 'plaintext' | 'markdown' | 'javascript' | 'typescript' | 'python' | 'java' | 'cpp' | 'html' | 'css' | 'json' | 'xml' | 'sql' | 'yaml';
+
 interface Note {
   id: string;
   title: string;
   content: string;
   tags: string[];
+  language?: MonacoLanguage;  // 每篇笔记单独记录高亮语言；旧笔记无此字段时回落到全局默认
   createdAt: string;
   updatedAt: string;
 }
-
-// Monaco 编辑器主题选项
-type MonacoTheme = 'vs' | 'vs-dark' | 'hc-black';
-type MonacoLanguage = 'plaintext' | 'markdown' | 'javascript' | 'typescript' | 'python' | 'java' | 'cpp' | 'html' | 'css' | 'json' | 'xml' | 'sql' | 'yaml';
 
 const THEME_OPTIONS: { value: MonacoTheme; label: string }[] = [
   { value: 'vs', label: '浅色' },
@@ -264,6 +265,7 @@ const NotesManager = () => {
         title: note.title,
         content: note.content,
         tags: note.tags,
+        language: note.language ?? null,  // 持久化每篇笔记的高亮语言
         createdAt: note.createdAt,
         updatedAt: nowIso
       }, null, 2);
@@ -323,12 +325,20 @@ const NotesManager = () => {
 
     // 先用列表数据显示，避免等待（切换笔记：重置原始内容基准）
     updateSelectedNote(note, true);
+    // 切换到该笔记时，应用其记录的高亮语言（无记录则保持全局默认）
+    if (note.language) {
+      setEditorLanguage(note.language);
+    }
 
     // 然后从 R2 加载最新内容
     const latestNote = await loadNoteContent(note.id);
     if (latestNote) {
       // 用从 R2 读到的最新内容作为原始基准（updateSelectedNote 传 true 重置）
       updateSelectedNote(latestNote, true);
+      // 加载到的内容可能带有更准确的语言记录，再次同步
+      if (latestNote.language) {
+        setEditorLanguage(latestNote.language);
+      }
       // 同时更新列表中的数据
       setNotes(prev => prev.map(n => n.id === latestNote.id ? latestNote : n));
     }
@@ -413,6 +423,7 @@ const NotesManager = () => {
       title: '新笔记',
       content: '',
       tags: [],
+      language: editorLanguage,  // 新笔记沿用当前编辑器语言作为默认
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -665,7 +676,17 @@ const NotesManager = () => {
                     onChange={(e) => {
                       const lang = e.target.value as MonacoLanguage;
                       setEditorLanguage(lang);
+                      // 记为该笔记专属语言（下次进入自动应用），并作为新建笔记的默认值
                       localStorage.setItem('monaco_language', lang);
+                      if (selectedNote) {
+                        const updated = { ...selectedNote, language: lang };
+                        updateSelectedNote(updated, false);
+                        setNotes(prev => prev.map(n =>
+                          n.id === selectedNote.id ? { ...n, language: lang } : n
+                        ));
+                        // 立即保存语言设置到 R2
+                        saveNote(updated, true);
+                      }
                     }}
                   >
                     {LANGUAGE_OPTIONS.map(option => (
