@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import JSZip from 'jszip';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
 import type { Config, FileItem } from '../lib/types';
@@ -34,6 +35,11 @@ const R2FileManager = () => {
   const [currentDirectory, setCurrentDirectory] = useState('');
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [previewPanelVisible, setPreviewPanelVisible] = useState(false);
+  // 批量打包下载的进度：{current,total} 表示正在下载第 current/total 个文件
+  const [downloadAllProgress, setDownloadAllProgress] = useState<{ current: number; total: number } | null>(null);
+  const [isZipping, setIsZipping] = useState(false);
+  // 并发锁：state 异步更新，快速双击时 disabled 未必已生效，用 ref 立即拦截
+  const isZippingRef = useRef(false);
 
   // 调用 Workers API —— 使用共享封装（见 src/lib/r2Api.ts），参数顺序 (action, config, body)
   // 本地包装保留 (action, body, currentConfig) 形式以减少本组件内改动
@@ -347,6 +353,44 @@ const R2FileManager = () => {
     }
   };
 
+  // 拉取单个文件的 blob，token 放在 header 中不暴露在 url
+  // 返回纯文件名（去掉目录前缀）和 blob，供单文件下载与批量打包复用
+  const fetchFileBlob = async (key: string): Promise<{ filename: string; blob: Blob }> => {
+    const baseUrl = config.workerUrl.replace(/\/$/, '');
+    const fileUrl = `${baseUrl}/file/${encodeURIComponent(key)}`;
+
+    // 使用 fetch 下载，token 放在 Authorization header 中
+    const headers: Record<string, string> = {};
+    if (config.apiToken) {
+      headers['Authorization'] = `Bearer ${config.apiToken}`;
+    }
+
+    const response = await fetch(fileUrl, { headers });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('未授权，请检查 API Token 配置');
+      }
+      if (response.status === 404) {
+        throw new Error('文件不存在');
+      }
+      throw new Error(`下载失败 (${response.status})`);
+    }
+
+    // 获取文件名（从key中提取纯文件名，去掉目录前缀）
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = key.includes('/') ? key.substring(key.lastIndexOf('/') + 1) : key;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+
+    const blob = await response.blob();
+    return { filename, blob };
+  };
+
   // 下载文件 - 使用 fetch 下载，token 放在 header 中不暴露在 url
   const downloadFile = async (key: string) => {
     if (!config.workerUrl) {
@@ -358,39 +402,9 @@ const R2FileManager = () => {
       setLoading(true);
       setError('');
 
-      const baseUrl = config.workerUrl.replace(/\/$/, '');
-      const fileUrl = `${baseUrl}/file/${encodeURIComponent(key)}`;
-
-      // 使用 fetch 下载，token 放在 Authorization header 中
-      const headers: Record<string, string> = {};
-      if (config.apiToken) {
-        headers['Authorization'] = `Bearer ${config.apiToken}`;
-      }
-
-      const response = await fetch(fileUrl, { headers });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('未授权，请检查 API Token 配置');
-        }
-        if (response.status === 404) {
-          throw new Error('文件不存在');
-        }
-        throw new Error(`下载失败 (${response.status})`);
-      }
-
-      // 获取文件名（从key中提取纯文件名，去掉目录前缀）
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = key.includes('/') ? key.substring(key.lastIndexOf('/') + 1) : key;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
+      const { filename, blob } = await fetchFileBlob(key);
 
       // 转换为 blob 并触发下载
-      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -404,6 +418,85 @@ const R2FileManager = () => {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 一键下载当前目录下所有文件，打包为单个 ZIP（不递归子目录）
+  const downloadAllAsZip = async () => {
+    // 并发锁：正在打包时直接忽略再次点击（ref 同步生效，避免 state 异步空窗）
+    if (isZippingRef.current) return;
+    if (!config.workerUrl) {
+      setError('未配置 Worker URL，请在设置中配置 R2 存储信息');
+      return;
+    }
+    if (files.length === 0) {
+      setCopiedUrl('当前目录没有文件');
+      setShowCopyToast(true);
+      setTimeout(() => setShowCopyToast(false), 2000);
+      return;
+    }
+
+    const total = files.length;
+    const zip = new JSZip();
+    // 同名文件去重：重名时加后缀 name (1).ext、name (2).ext ...
+    const usedNames = new Map<string, number>();
+    const failed: string[] = [];
+
+    try {
+      isZippingRef.current = true;
+      setIsZipping(true);
+      setDownloadAllProgress({ current: 0, total });
+      setError('');
+
+      for (let i = 0; i < total; i++) {
+        const key = files[i].Key;
+        setDownloadAllProgress({ current: i + 1, total });
+        try {
+          const { filename, blob } = await fetchFileBlob(key);
+          let entryName = filename;
+          if (usedNames.has(filename)) {
+            const n = (usedNames.get(filename) as number) + 1;
+            usedNames.set(filename, n);
+            const dot = filename.lastIndexOf('.');
+            entryName = dot > 0
+              ? `${filename.substring(0, dot)} (${n})${filename.substring(dot)}`
+              : `${filename} (${n})`;
+          } else {
+            usedNames.set(filename, 0);
+          }
+          zip.file(entryName, blob);
+        } catch (err) {
+          failed.push(key);
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const dirName = currentDirectory
+        ? (currentDirectory.split('/').pop() || 'r2-files')
+        : 'r2-files';
+      const zipName = `${dirName}.zip`;
+      const url = window.URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = zipName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      const okCount = total - failed.length;
+      const msg = failed.length > 0
+        ? `已打包 ${okCount}/${total} 个文件，${failed.length} 个失败`
+        : `已打包下载 ${okCount} 个文件`;
+      setCopiedUrl(msg);
+      setShowCopyToast(true);
+      setTimeout(() => setShowCopyToast(false), 3000);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      isZippingRef.current = false;
+      setIsZipping(false);
+      setDownloadAllProgress(null);
     }
   };
 
@@ -786,6 +879,17 @@ const R2FileManager = () => {
               <button className="btn btn-primary btn-small" onClick={() => listFiles(currentDirectory)}>
                 <Icon name="refresh" size={14} />
                 刷新
+              </button>
+              <button
+                className="btn btn-secondary btn-small"
+                onClick={downloadAllAsZip}
+                disabled={files.length === 0 || isZipping}
+                title={isZipping ? '正在打包下载...' : '下载当前目录全部文件（ZIP）'}
+              >
+                <Icon name="download" size={14} />
+                {isZipping && downloadAllProgress
+                  ? `打包中 (${downloadAllProgress.current}/${downloadAllProgress.total})...`
+                  : '下载全部'}
               </button>
             </div>
           </div>

@@ -4942,6 +4942,14 @@ body {
   cursor: not-allowed;
 }
 
+/* 所有按钮的禁用态：降透明度 + 禁止光标，给出明确的「不可点击」视觉反馈 */
+.btn:disabled,
+.btn:disabled:hover {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ========== 知识库样式 ========== */
 .km-content {
   max-width: 900px;
