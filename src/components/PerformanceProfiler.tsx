@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import pako from 'pako';
+import * as pako from 'pako';
 import html2canvas from 'html2canvas';
 import Icon from './Icon';
 import PerformanceGanttChart from './PerformanceGanttChart';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import pako from 'pako';
+import * as pako from 'pako';
 import SnappyJS from 'snappyjs';
 import MessageToast from './MessageToast';
 import Icon from './Icon';
