@@ -304,6 +304,30 @@ const Icon: React.FC<IconProps> = ({ name, size = 18, className = '' }) => {
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
         </svg>
       )}
+      {name === 'regex' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <path d="M4 4v16" /><path d="M20 4v16" />
+          <circle cx="12" cy="9" r="2" /><circle cx="12" cy="15" r="2" />
+          <path d="M9 9h0M15 9h0M9 15h0M15 15h0" />
+        </svg>
+      )}
+      {name === 'timestamp' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+        </svg>
+      )}
+      {name === 'uuid' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <path d="M8 3H6a2 2 0 0 0-2 2v2M16 3h2a2 2 0 0 1 2 2v2M8 21H6a2 2 0 0 1-2-2v-2M16 21h2a2 2 0 0 0 2-2v-2" />
+          <path d="M9 12h6" />
+        </svg>
+      )}
+      {name === 'jwt' && (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }}>
+          <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          <circle cx="12" cy="16" r="1.5" />
+        </svg>
+      )}
     </span>
   );
 };

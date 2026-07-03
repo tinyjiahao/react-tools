@@ -24,6 +24,10 @@ export const STORAGE_KEYS = {
   base64History: 'base64_history',
   performanceData: 'performanceData',
   performanceHistory: 'performanceHistory',
+  regexTester: 'regex_tester',
+  timestampConverter: 'timestamp_converter',
+  uuidGenerator: 'uuid_generator',
+  jwtDecoder: 'jwt_decoder',
 } as const;
 
 /**
