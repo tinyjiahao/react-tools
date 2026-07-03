@@ -99,7 +99,7 @@ const UuidGenerator = () => {
               min={1}
               max={100}
               value={state.count}
-              onChange={(e) => setState((s) => ({ ...s, count: Number(e.target.value) || 1 }))}
+              onChange={(e) => setState((s) => ({ ...s, count: Math.max(1, Math.min(100, Number(e.target.value) || 1)) }))}
               className="uuid-count-input"
             />
           </div>

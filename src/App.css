@@ -7338,6 +7338,7 @@ body {
 .jwt-hint { color: var(--text-secondary, #888); }
 .jwt-error { color: #e53935; display: flex; align-items: center; gap: 6px; }
 .jwt-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+.jwt-meta-item { display: inline-flex; align-items: center; gap: 2px; }
 .jwt-exp.valid { color: #43a047; }
 .jwt-exp.expired { color: #e53935; font-weight: 600; }
 .jwt-segment { padding: 10px; border-radius: 6px; border-left: 4px solid; }
