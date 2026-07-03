@@ -7274,3 +7274,80 @@ body {
   font-size: 13px;
   white-space: nowrap;
 }
+
+/* ===== 正则测试器 ===== */
+.regex-tester { display: flex; flex-direction: column; gap: 16px; }
+.regex-config { display: flex; flex-direction: column; gap: 10px; }
+.regex-pattern-row { display: flex; align-items: center; gap: 6px; font-family: var(--mono-font, monospace); font-size: 16px; }
+.regex-pattern-input { flex: 1; font-family: var(--mono-font, monospace); font-size: 16px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); }
+.regex-slash { color: var(--cf-orange); font-weight: 600; }
+.regex-flags { display: flex; gap: 8px; flex-wrap: wrap; }
+.flag-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 14px; cursor: pointer; font-family: var(--mono-font, monospace); font-size: 13px; user-select: none; }
+.flag-chip.active { border-color: var(--cf-orange); color: var(--cf-orange); background: color-mix(in srgb, var(--cf-orange) 10%, transparent); }
+.flag-chip input { display: none; }
+.regex-text-input { width: 100%; min-height: 120px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); font-family: var(--mono-font, monospace); font-size: 14px; resize: vertical; }
+.regex-result { padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-bg, var(--bg-color)); }
+.regex-highlighted { white-space: pre-wrap; word-break: break-all; font-family: var(--mono-font, monospace); line-height: 1.6; }
+.regex-match { background: color-mix(in srgb, var(--cf-orange) 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+.regex-error { color: #e53935; display: flex; align-items: center; gap: 6px; }
+.regex-hint { color: var(--text-secondary, #888); }
+.regex-stats { display: flex; align-items: center; gap: 12px; margin: 10px 0; color: var(--text-secondary, #888); font-size: 13px; }
+.regex-groups-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+.regex-groups-table th, .regex-groups-table td { border: 1px solid var(--border-color); padding: 6px 8px; text-align: left; }
+.regex-groups-table th { background: color-mix(in srgb, var(--text-color) 8%, transparent); }
+.mono { font-family: var(--mono-font, monospace); }
+
+/* ===== 时间戳转换器 ===== */
+.timestamp-converter { display: flex; flex-direction: column; gap: 16px; }
+.ts-now-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--card-bg, var(--bg-color)); }
+.ts-now-label { font-size: 13px; color: var(--text-secondary, #888); }
+.ts-now-value { font-size: 16px; font-weight: 600; }
+.ts-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ts-col { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; }
+.ts-col h3 { margin: 0 0 4px 0; font-size: 15px; }
+.ts-input { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); }
+.ts-hint { font-size: 12px; color: var(--text-secondary, #888); margin: 0; }
+.ts-error { color: #e53935; font-size: 13px; }
+.ts-result-card { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.ts-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.ts-row label { min-width: 72px; color: var(--text-secondary, #888); }
+.ts-row span { flex: 1; word-break: break-all; }
+@media (max-width: 768px) { .ts-columns { grid-template-columns: 1fr; } }
+
+/* ===== UUID 生成器 ===== */
+.uuid-generator { display: flex; flex-direction: column; gap: 16px; }
+.uuid-config { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; }
+.uuid-field { display: flex; flex-direction: column; gap: 4px; }
+.uuid-field > label:first-child { font-size: 12px; color: var(--text-secondary, #888); }
+.uuid-version-options { display: flex; gap: 6px; }
+.uuid-version-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 14px; cursor: pointer; font-size: 13px; user-select: none; }
+.uuid-version-chip input { display: none; }
+.uuid-version-chip.active { border-color: var(--cf-orange); color: var(--cf-orange); background: color-mix(in srgb, var(--cf-orange) 10%, transparent); }
+.uuid-count-input { width: 80px; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); }
+.uuid-hint { font-size: 11px; color: var(--text-secondary, #888); }
+.uuid-results { display: flex; flex-direction: column; gap: 8px; }
+.uuid-results-header { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-secondary, #888); }
+.uuid-list { display: flex; flex-direction: column; gap: 4px; }
+.uuid-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; }
+.uuid-item .mono { flex: 1; word-break: break-all; font-size: 13px; }
+
+/* ===== JWT 解码器 ===== */
+.jwt-decoder { display: flex; flex-direction: column; gap: 16px; }
+.jwt-input { width: 100%; min-height: 100px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); font-family: var(--mono-font, monospace); font-size: 13px; resize: vertical; word-break: break-all; }
+.jwt-output { display: flex; flex-direction: column; gap: 12px; }
+.jwt-hint { color: var(--text-secondary, #888); }
+.jwt-error { color: #e53935; display: flex; align-items: center; gap: 6px; }
+.jwt-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+.jwt-exp.valid { color: #43a047; }
+.jwt-exp.expired { color: #e53935; font-weight: 600; }
+.jwt-segment { padding: 10px; border-radius: 6px; border-left: 4px solid; }
+.jwt-segment h4 { margin: 0 0 6px 0; font-size: 13px; }
+.jwt-header { border-left-color: #e53935; background: color-mix(in srgb, #e53935 8%, transparent); }
+.jwt-payload { border-left-color: #8e24aa; background: color-mix(in srgb, #8e24aa 8%, transparent); }
+.jwt-signature { border-left-color: #1e88e5; background: color-mix(in srgb, #1e88e5 8%, transparent); }
+.json-view { margin: 0; font-family: var(--mono-font, monospace); font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+.json-key { color: var(--cf-orange); }
+.json-string { color: #43a047; }
+.json-number { color: #1e88e5; }
+.json-boolean { color: #8e24aa; }
+.json-null { color: var(--text-secondary, #888); }
