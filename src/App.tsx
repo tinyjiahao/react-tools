@@ -16,11 +16,15 @@ import JsonlViewer from './components/JsonlViewer';
 import ImplViewer from './components/ImplViewer';
 import SseViewer from './components/SseViewer';
 import CurlBuilder from './components/CurlBuilder';
+import RegexTester from './components/RegexTester';
+import TimestampConverter from './components/TimestampConverter';
+import UuidGenerator from './components/UuidGenerator';
+import JwtDecoder from './components/JwtDecoder';
 import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer' | 'curl-builder';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer' | 'curl-builder' | 'regex' | 'timestamp' | 'uuid' | 'jwt';
 
 // 定义工具分类
 interface ToolCategory {
@@ -83,7 +87,11 @@ const toolCategories: ToolCategory[] = [
     name: '开发工具',
     icon: 'activity',
     tools: [
-      { id: 'performance', name: '性能分析器', description: '上传数据生成甘特图进行性能分析' }
+      { id: 'performance', name: '性能分析器', description: '上传数据生成甘特图进行性能分析' },
+      { id: 'regex', name: '正则测试', description: '正则表达式实时匹配与捕获组' },
+      { id: 'timestamp', name: '时间戳转换', description: 'Unix时间戳与日期互转' },
+      { id: 'uuid', name: 'UUID生成器', description: '批量生成UUID/ULID' },
+      { id: 'jwt', name: 'JWT解码', description: '解码JWT的Header与Payload' }
     ]
   }
 ];
@@ -105,7 +113,11 @@ const toolIdToPath: Record<ToolType, string> = {
   'jsonl-viewer': 'jsonl-viewer',
   'impl-viewer': 'impl-viewer',
   'sse-viewer': 'sse-viewer',
-  'curl-builder': 'curl-builder'
+  'curl-builder': 'curl-builder',
+  'regex': 'regex',
+  'timestamp': 'timestamp',
+  'uuid': 'uuid',
+  'jwt': 'jwt'
 };
 
 // URL路径到工具ID的映射
@@ -125,7 +137,11 @@ const pathToToolId: Record<string, ToolType> = {
   'jsonl-viewer': 'jsonl-viewer',
   'impl-viewer': 'impl-viewer',
   'sse-viewer': 'sse-viewer',
-  'curl-builder': 'curl-builder'
+  'curl-builder': 'curl-builder',
+  'regex': 'regex',
+  'timestamp': 'timestamp',
+  'uuid': 'uuid',
+  'jwt': 'jwt'
 };
 
 function App() {
@@ -339,6 +355,10 @@ function App() {
           {activeTool === 'impl-viewer' && <ImplViewer />}
           {activeTool === 'sse-viewer' && <SseViewer />}
           {activeTool === 'curl-builder' && <CurlBuilder />}
+          {activeTool === 'regex' && <RegexTester />}
+          {activeTool === 'timestamp' && <TimestampConverter />}
+          {activeTool === 'uuid' && <UuidGenerator />}
+          {activeTool === 'jwt' && <JwtDecoder />}
         </div>
       </main>
 
