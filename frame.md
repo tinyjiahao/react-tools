@@ -135,7 +135,6 @@ react-tools/
 | `UrlEncoder` | URL 编解码 |
 | `CurlBuilder` | 根据 URL/Params/Headers 生成 cURL |
 | `PerformanceProfiler` | 上传性能数据 → 甘特图分析（`PerformanceGanttChart`） |
-| `KnowledgeManager` | 富文本知识库内容查看 |
 
 #### 云端存储工具（依赖 Worker + R2）
 | 组件 | localStorage 配置 key | 说明 |
