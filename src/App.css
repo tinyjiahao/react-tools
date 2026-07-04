@@ -6399,6 +6399,62 @@ body {
   gap: 10px;
 }
 
+.jsonl-event-summary {
+  margin: 12px 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
+  background: var(--cf-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.jsonl-event-summary-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.jsonl-event-type {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1565c0;
+  background: #e3f2fd;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.jsonl-event-type--request {
+  color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.jsonl-event-type--assistant-message {
+  color: #6a1b9a;
+  background: #f3e5f5;
+}
+
+.jsonl-event-time,
+.jsonl-event-meta,
+.jsonl-event-usage {
+  font-size: 12px;
+  color: var(--cf-text-muted);
+}
+
+.jsonl-event-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.jsonl-event-usage {
+  color: var(--cf-text-secondary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
 /* 在窄的详情面板里，消息气泡不做缩进，统一左对齐 */
 .jsonl-detail-messages .chat-message--user,
 .jsonl-detail-messages .chat-message--assistant {
@@ -6682,10 +6738,21 @@ body {
   color: #1565c0;
 }
 
+.role-tool {
+  background: #fff3e0;
+  color: #e65100;
+}
+
 .chat-timestamp {
   font-size: 11px;
   color: var(--cf-text-muted);
   flex: 1;
+}
+
+.chat-message-meta {
+  font-size: 11px;
+  color: var(--cf-text-muted);
+  margin-left: auto;
 }
 
 .chat-message-actions {
@@ -6811,6 +6878,21 @@ body {
 .chat-tool-result-content {
   margin: 0;
   padding: 10px 12px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  line-height: 1.5;
+  color: var(--cf-text-primary);
+  background: var(--cf-bg-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.chat-json-part {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 6px;
   font-size: 12px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   line-height: 1.5;
