@@ -32,7 +32,7 @@ function highlightJson(json: string): string {
 }
 
 interface ContentPart {
-  type: 'text' | 'tool_use' | 'tool_result' | 'thinking' | 'image';
+  type: 'text' | 'tool_use' | 'tool_result' | 'thinking' | 'image' | 'json';
   // text
   text?: string;
   // tool_use
@@ -43,13 +43,17 @@ interface ContentPart {
   toolUseId?: string;
   resultContent?: string;
   isError?: boolean;
+  jsonValue?: unknown;
 }
+
+type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
 interface ConversationMessage {
   ts: string;
-  role: 'system' | 'user' | 'assistant';
+  role: MessageRole;
   content: string; // 向后兼容纯文本
   parts?: ContentPart[]; // 结构化内容
+  meta?: string;
 }
 
 // 判断是否是对话格式（每行都有 role + content）
@@ -90,13 +94,39 @@ const ROLE_LABEL: Record<string, string> = {
   system: '系统提示',
   user: '用户',
   assistant: 'AI 助手',
+  tool: '工具结果',
 };
 
 const ROLE_COLOR: Record<string, string> = {
   system: 'role-system',
   user: 'role-user',
   assistant: 'role-assistant',
+  tool: 'role-tool',
 };
+
+const COLLAPSE_TEXT_THRESHOLD = 900;
+const COLLAPSE_PARTS_THRESHOLD = 2;
+const COLLAPSED_PREVIEW_LENGTH = 280;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function stringifyUnknown(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function normalizeRole(role: unknown): MessageRole {
+  return role === 'system' || role === 'user' || role === 'assistant' || role === 'tool'
+    ? role
+    : 'assistant';
+}
 
 // 代码块组件：带语言 badge 和复制按钮
 const CodeBlock: React.FC<{ language?: string; children: string }> = ({ language, children }) => {
@@ -176,7 +206,7 @@ const ContentPartRender: React.FC<{
       <div className="chat-tool-use">
         <div className="chat-tool-use-header">
           <span className="chat-tool-use-badge">Tool</span>
-          <span className="chat-tool-use-name">{part.toolName}</span>
+          <span className="chat-tool-use-name">{part.toolName || part.toolId || 'unknown'}</span>
         </div>
         {part.toolInput && Object.keys(part.toolInput).length > 0 && (
           <pre className="chat-tool-use-input">
@@ -217,6 +247,14 @@ const ContentPartRender: React.FC<{
     return <div className="chat-image-placeholder">[图片]</div>;
   }
 
+  if (part.type === 'json') {
+    return (
+      <pre className="chat-json-part">
+        <code>{stringifyUnknown(part.jsonValue)}</code>
+      </pre>
+    );
+  }
+
   return null;
 };
 
@@ -228,6 +266,18 @@ const MessageBubble: React.FC<{
 }> = ({ msg, onCopy }) => {
   const isSystem = msg.role === 'system';
   const hasParts = msg.parts && msg.parts.length > 0;
+  const shouldCollapseByDefault = msg.content.length > COLLAPSE_TEXT_THRESHOLD ||
+    (msg.parts?.length ?? 0) > COLLAPSE_PARTS_THRESHOLD;
+  const [isExpanded, setIsExpanded] = useState(!shouldCollapseByDefault);
+  const canToggle = shouldCollapseByDefault;
+  const isCollapsed = canToggle && !isExpanded;
+  const preview = msg.content.length > COLLAPSED_PREVIEW_LENGTH
+    ? msg.content.slice(0, COLLAPSED_PREVIEW_LENGTH).trimEnd() + '...'
+    : msg.content;
+
+  useEffect(() => {
+    setIsExpanded(!shouldCollapseByDefault);
+  }, [msg.content, shouldCollapseByDefault]);
 
   return (
     <div className={`chat-message chat-message--${msg.role}`}>
@@ -238,7 +288,17 @@ const MessageBubble: React.FC<{
         {msg.ts && (
           <span className="chat-timestamp">{formatTime(msg.ts)}</span>
         )}
+        {msg.meta && <span className="chat-message-meta">{msg.meta}</span>}
         <div className="chat-message-actions">
+          {canToggle && (
+            <button
+              className="chat-action-btn"
+              onClick={() => setIsExpanded(current => !current)}
+              title={isCollapsed ? '展开内容' : '折叠内容'}
+            >
+              {isCollapsed ? '展开' : '折叠'}
+            </button>
+          )}
           <button
             className="chat-action-btn"
             onClick={() => onCopy(msg.content)}
@@ -249,8 +309,18 @@ const MessageBubble: React.FC<{
         </div>
       </div>
 
-      <div className={`chat-message-body${isSystem ? ' chat-message-body--system' : ''}`}>
-        {hasParts ? (
+      <div className={`chat-message-body${isSystem ? ' chat-message-body--system' : ''}${isCollapsed ? ' chat-message-body--collapsed' : ''}`}>
+        {isCollapsed ? (
+          <>
+            <MarkdownContent content={preview} />
+            <button
+              className="chat-expand-inline"
+              onClick={() => setIsExpanded(true)}
+            >
+              展开内容
+            </button>
+          </>
+        ) : hasParts ? (
           msg.parts!.map((part, idx) => (
             <ContentPartRender key={idx} part={part} />
           ))
@@ -353,9 +423,9 @@ function contentToString(content: unknown): string {
         if (part && typeof part === 'object') {
           const p = part as Record<string, unknown>;
           if (p['type'] === 'text' && typeof p['text'] === 'string') return p['text'];
-          if (p['type'] === 'tool_use') {
+          if (p['type'] === 'tool_use' || p['type'] === 'toolCall') {
             const name = p['name'] || '';
-            const input = p['input'];
+            const input = p['input'] ?? p['arguments'];
             return `[Tool: ${name}] ${typeof input === 'object' ? JSON.stringify(input, null, 2) : String(input || '')}`;
           }
           if (p['type'] === 'tool_result') {
@@ -371,39 +441,49 @@ function contentToString(content: unknown): string {
           if (p['type'] === 'thinking' && typeof p['thinking'] === 'string') {
             return `[Thinking] ${p['thinking']}`;
           }
+          if (typeof p['content'] === 'string') return p['content'];
           if (p['type'] === 'image_url') return '[图片]';
           if (p['type'] === 'image') return '[图片]';
+          return stringifyUnknown(p);
         }
         return '';
       })
       .join('\n')
       .trim();
   }
+  if (isRecord(content)) {
+    if (typeof content['text'] === 'string') return content['text'];
+    if (typeof content['content'] === 'string') return content['content'];
+    return stringifyUnknown(content);
+  }
   return '';
 }
 
 // 将 content 数组解析为结构化的 ContentPart 列表
 function contentToParts(content: unknown): ContentPart[] | undefined {
-  if (!Array.isArray(content)) return undefined;
-  if (content.length === 0) return undefined;
-
   const parts: ContentPart[] = [];
-  for (const part of content) {
+  const items = Array.isArray(content) ? content : [content];
+
+  for (const part of items) {
     if (typeof part === 'string') {
       if (part.trim()) parts.push({ type: 'text', text: part });
       continue;
     }
-    if (!part || typeof part !== 'object') continue;
-    const p = part as Record<string, unknown>;
+    if (!isRecord(part)) continue;
+    const p = part;
 
     if (p['type'] === 'text' && typeof p['text'] === 'string') {
       if (p['text'].trim()) parts.push({ type: 'text', text: p['text'] });
-    } else if (p['type'] === 'tool_use') {
+    } else if (p['type'] === 'tool_use' || p['type'] === 'toolCall') {
       parts.push({
         type: 'tool_use',
         toolId: String(p['id'] || ''),
         toolName: String(p['name'] || ''),
-        toolInput: (p['input'] as Record<string, unknown>) || {},
+        toolInput: isRecord(p['input'])
+          ? p['input']
+          : isRecord(p['arguments'])
+            ? p['arguments']
+            : {},
       });
     } else if (p['type'] === 'tool_result') {
       let resultContent = '';
@@ -429,65 +509,194 @@ function contentToParts(content: unknown): ContentPart[] | undefined {
       });
     } else if (p['type'] === 'image_url' || p['type'] === 'image') {
       parts.push({ type: 'image' });
+    } else if (typeof p['content'] === 'string') {
+      parts.push({ type: 'text', text: p['content'] });
+    } else {
+      parts.push({ type: 'json', jsonValue: p });
     }
   }
   return parts.length > 0 ? parts : undefined;
 }
 
+function toolCallsToParts(toolCalls: unknown): ContentPart[] {
+  if (!Array.isArray(toolCalls)) return [];
+  return toolCalls
+    .filter(isRecord)
+    .map(call => ({
+      type: 'tool_use' as const,
+      toolId: String(call['id'] || ''),
+      toolName: isRecord(call['function'])
+        ? String(call['function']['name'] || '')
+        : String(call['name'] || ''),
+      toolInput: parseToolInput(isRecord(call['function']) ? call['function']['arguments'] : call['arguments']),
+    }));
+}
+
+function parseToolInput(value: unknown): Record<string, unknown> {
+  if (isRecord(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return isRecord(parsed) ? parsed : { value: parsed };
+    } catch {
+      return { value };
+    }
+  }
+  return {};
+}
+
+function messageFromRecord(msg: Record<string, unknown>, fallbackTs: string): ConversationMessage | null {
+  const role = normalizeRole(msg['role']);
+  const content = msg['content'];
+  const parts = [
+    ...(typeof msg['reasoning_content'] === 'string' && msg['reasoning_content'].trim()
+      ? [{ type: 'thinking' as const, text: msg['reasoning_content'] }]
+      : []),
+    ...(contentToParts(content) ?? []),
+    ...toolCallsToParts(msg['tool_calls']),
+  ];
+  const contentText = [
+    typeof msg['reasoning_content'] === 'string' ? `[Thinking] ${msg['reasoning_content']}` : '',
+    contentToString(content),
+    ...toolCallsToParts(msg['tool_calls']).map(part => `[Tool: ${part.toolName}] ${stringifyUnknown(part.toolInput)}`),
+  ].filter(Boolean).join('\n').trim();
+
+  if (!contentText && parts.length === 0) return null;
+
+  return {
+    ts: typeof msg['ts'] === 'string' ? msg['ts'] : fallbackTs,
+    role,
+    content: contentText,
+    parts: parts.length > 0 ? parts : undefined,
+    meta: typeof msg['tool_call_id'] === 'string' ? msg['tool_call_id'] : undefined,
+  };
+}
+
+function getPayload(obj: Record<string, unknown>): Record<string, unknown> {
+  return isRecord(obj['payload']) ? obj['payload'] : obj;
+}
+
+function buildProviderMeta(payload: Record<string, unknown>): string | undefined {
+  const items = [
+    typeof payload['provider'] === 'string' ? payload['provider'] : '',
+    typeof payload['model'] === 'string' ? payload['model'] : '',
+    typeof payload['stopReason'] === 'string' ? `stop: ${payload['stopReason']}` : '',
+  ].filter(Boolean);
+  return items.length > 0 ? items.join(' · ') : undefined;
+}
+
 // 检测是否是 OpenAI messages 格式（单行含 messages 数组）
 // 同时支持顶层 system 字段 + messages 的格式
 function extractMessages(obj: Record<string, unknown>): ConversationMessage[] | null {
-  const msgs = obj['messages'];
-  if (!Array.isArray(msgs) || msgs.length === 0) return null;
+  const payload = getPayload(obj);
+  const timestamp = typeof obj['timestamp'] === 'string'
+    ? obj['timestamp']
+    : typeof payload['timestamp'] === 'string'
+      ? payload['timestamp']
+      : '';
+  const msgs = payload['messages'];
+
+  if (!Array.isArray(msgs) || msgs.length === 0) {
+    const single = extractSingleProviderMessage(obj, payload, timestamp);
+    return single ? [single] : null;
+  }
 
   // 每条消息必须有 role 字符串，content 可以是字符串或数组
   const valid = (msgs as unknown[]).every(
-    m => m && typeof m === 'object' &&
-      typeof (m as Record<string, unknown>)['role'] === 'string' &&
-      (
-        typeof (m as Record<string, unknown>)['content'] === 'string' ||
-        Array.isArray((m as Record<string, unknown>)['content'])
-      )
+    m => isRecord(m) && typeof m['role'] === 'string'
   );
   if (!valid) return null;
 
   const result: ConversationMessage[] = [];
 
   // 如果有顶层 system 字段，插入到最前面
-  const systemField = obj['system'];
+  const systemField = payload['system'];
   if (typeof systemField === 'string' && systemField.trim()) {
-    result.push({ ts: (obj['ts'] as string) || '', role: 'system', content: systemField });
+    result.push({ ts: timestamp, role: 'system', content: systemField });
   } else if (Array.isArray(systemField)) {
     const sysText = systemField
-      .filter((p: Record<string, unknown>) => p['type'] === 'text' && typeof p['text'] === 'string')
-      .map((p: Record<string, unknown>) => p['text'])
+      .filter(isRecord)
+      .filter(p => p['type'] === 'text' && typeof p['text'] === 'string')
+      .map(p => p['text'])
       .join('\n')
       .trim();
     if (sysText) {
-      result.push({ ts: (obj['ts'] as string) || '', role: 'system', content: sysText, parts: contentToParts(systemField) });
+      result.push({ ts: timestamp, role: 'system', content: sysText, parts: contentToParts(systemField) });
     }
   }
 
-  for (const m of msgs as Record<string, unknown>[]) {
-    const content = m['content'];
-    result.push({
-      ts: (obj['ts'] as string) || '',
-      role: (m['role'] as ConversationMessage['role']) || 'user',
-      content: contentToString(content),
-      parts: contentToParts(content),
-    });
+  for (const m of msgs) {
+    if (!isRecord(m)) continue;
+    const message = messageFromRecord(m, timestamp);
+    if (message) {
+      result.push(message);
+    }
   }
 
   return result.length > 0 ? result : null;
+}
+
+function extractSingleProviderMessage(
+  obj: Record<string, unknown>,
+  payload: Record<string, unknown>,
+  timestamp: string
+): ConversationMessage | null {
+  if (typeof payload['role'] !== 'string' && payload['content'] === undefined) return null;
+  const message = messageFromRecord(payload, timestamp);
+  if (!message) return null;
+
+  const type = typeof obj['type'] === 'string' ? obj['type'] : '';
+  const meta = buildProviderMeta(payload);
+  return {
+    ...message,
+    role: normalizeRole(payload['role'] ?? 'assistant'),
+    meta: [type === 'assistant_message' ? '模型返回' : '', meta].filter(Boolean).join(' · ') || message.meta,
+  };
+}
+
+interface ProviderEventSummary {
+  type: string;
+  timestamp: string;
+  model?: string;
+  provider?: string;
+  api?: string;
+  stopReason?: string;
+  usageText?: string;
+}
+
+function getEventSummary(obj: Record<string, unknown>): ProviderEventSummary | null {
+  const payload = getPayload(obj);
+  if (!isRecord(obj['payload'])) return null;
+  const usage = isRecord(payload['usage']) ? payload['usage'] : null;
+  const cost = usage && isRecord(usage['cost']) ? usage['cost'] : null;
+  const tokens = [
+    typeof usage?.['input'] === 'number' ? `输入 ${usage['input']}` : '',
+    typeof usage?.['output'] === 'number' ? `输出 ${usage['output']}` : '',
+    typeof usage?.['reasoning'] === 'number' ? `推理 ${usage['reasoning']}` : '',
+    usage?.['totalTokens'] !== undefined ? `合计 ${String(usage['totalTokens'])}` : '',
+  ].filter(Boolean);
+  const costText = typeof cost?.['total'] === 'number' ? `成本 $${cost['total'].toFixed(6)}` : '';
+
+  return {
+    type: typeof obj['type'] === 'string' ? obj['type'] : 'event',
+    timestamp: typeof obj['timestamp'] === 'string' ? obj['timestamp'] : '',
+    model: typeof payload['model'] === 'string' ? payload['model'] : undefined,
+    provider: typeof payload['provider'] === 'string' ? payload['provider'] : undefined,
+    api: typeof payload['api'] === 'string' ? payload['api'] : undefined,
+    stopReason: typeof payload['stopReason'] === 'string' ? payload['stopReason'] : undefined,
+    usageText: [...tokens, costText].filter(Boolean).join(' · ') || undefined,
+  };
 }
 
 // 检测 JSON 对象是否有可渲染的内容
 function hasRenderableContent(obj: Record<string, unknown>): boolean {
   if (extractMessages(obj)) return true;
   // 检查 content 或 system 字段是否含 Markdown
+  const payload = getPayload(obj);
   for (const key of ['content', 'system', 'text']) {
-    const val = obj[key];
+    const val = payload[key];
     if (typeof val === 'string' && /[*#`[\]\n]/.test(val)) return true;
+    if (Array.isArray(val) && val.length > 0) return true;
   }
   return false;
 }
@@ -498,6 +707,7 @@ const DetailPanel: React.FC<{
   tab: 'render' | 'json';
 }> = ({ obj, tab }) => {
   const messages = useMemo(() => extractMessages(obj), [obj]);
+  const eventSummary = useMemo(() => getEventSummary(obj), [obj]);
 
   const [showCopied, setShowCopied] = useState(false);
 
@@ -509,8 +719,9 @@ const DetailPanel: React.FC<{
 
   // 找第一个有文本内容的字段作为 Markdown 渲染
   const contentStr = (() => {
+    const payload = getPayload(obj);
     for (const key of ['content', 'system', 'text']) {
-      const val = obj[key];
+      const val = payload[key];
       if (typeof val === 'string' && val.trim()) return val;
     }
     return null;
@@ -531,6 +742,7 @@ const DetailPanel: React.FC<{
       {/* 渲染视图 */}
       {tab === 'render' && (
         <>
+          {eventSummary && <EventSummaryCard summary={eventSummary} />}
           {messages ? (
             <div className="jsonl-detail-messages">
               {messages.map((msg, idx) => (
@@ -553,6 +765,52 @@ const DetailPanel: React.FC<{
     </div>
   );
 };
+
+const EventSummaryCard: React.FC<{ summary: ProviderEventSummary }> = ({ summary }) => {
+  const items = [
+    summary.provider ? `Provider: ${summary.provider}` : '',
+    summary.model ? `Model: ${summary.model}` : '',
+    summary.api ? `API: ${summary.api}` : '',
+    summary.stopReason ? `Stop: ${summary.stopReason}` : '',
+  ].filter(Boolean);
+
+  return (
+    <div className="jsonl-event-summary">
+      <div className="jsonl-event-summary-main">
+        <span className={`jsonl-event-type jsonl-event-type--${summary.type.replace(/_/g, '-')}`}>
+          {summary.type}
+        </span>
+        {summary.timestamp && <span className="jsonl-event-time">{formatTime(summary.timestamp)}</span>}
+      </div>
+      {items.length > 0 && (
+        <div className="jsonl-event-meta">
+          {items.map(item => <span key={item}>{item}</span>)}
+        </div>
+      )}
+      {summary.usageText && <div className="jsonl-event-usage">{summary.usageText}</div>}
+    </div>
+  );
+};
+
+function getLinePreview(line: ParsedLine): string {
+  if (!line.parsed) {
+    return line.raw.length > 80 ? line.raw.slice(0, 80) + '...' : line.raw;
+  }
+  const obj = line.parsed;
+  const payload = getPayload(obj);
+  const type = typeof obj['type'] === 'string' ? obj['type'] : 'json';
+  if (Array.isArray(payload['messages'])) {
+    const messageCount = payload['messages'].length;
+    const lastMessage = [...payload['messages']].reverse().find(isRecord);
+    const lastText = lastMessage ? contentToString(lastMessage['content']) : '';
+    return `${type} · ${messageCount} 条消息${lastText ? ` · ${lastText}` : ''}`;
+  }
+  if (payload['content'] !== undefined) {
+    const text = contentToString(payload['content']);
+    return `${type}${text ? ` · ${text}` : ''}`;
+  }
+  return line.raw.length > 80 ? line.raw.slice(0, 80) + '...' : line.raw;
+}
 
 // 通用 JSONL 视图（原始左右布局）
 const GenericView: React.FC<{
@@ -622,16 +880,21 @@ const GenericView: React.FC<{
         <div className="jsonl-layout">
           <div className="jsonl-list">
             {lines.map((line, idx) => (
-              <div
-                key={idx}
-                className={`jsonl-list-item${selectedIndex === idx ? ' selected' : ''}${line.error ? ' error' : ''}`}
-                onClick={() => setSelectedIndex(idx)}
-              >
-                <span className="jsonl-line-number">{idx + 1}</span>
-                <span className="jsonl-line-preview">
-                  {line.raw.length > 80 ? line.raw.slice(0, 80) + '...' : line.raw}
-                </span>
-              </div>
+              (() => {
+                const preview = getLinePreview(line);
+                return (
+                  <div
+                    key={idx}
+                    className={`jsonl-list-item${selectedIndex === idx ? ' selected' : ''}${line.error ? ' error' : ''}`}
+                    onClick={() => setSelectedIndex(idx)}
+                  >
+                    <span className="jsonl-line-number">{idx + 1}</span>
+                    <span className="jsonl-line-preview">
+                      {preview.length > 120 ? preview.slice(0, 120) + '...' : preview}
+                    </span>
+                  </div>
+                );
+              })()
             ))}
           </div>
 
