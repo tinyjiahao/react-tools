@@ -81,3 +81,8 @@ tsconfig.tsbuildinfo
 .vercel
 .netlify
 storybook-static
+
+# 本地工具/流量日志
+.agents/
+provider-traffic.jsonl
+
