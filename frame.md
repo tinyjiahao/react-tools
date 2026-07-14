@@ -32,7 +32,6 @@ react-tools/
 │   ├── _routes.json           # Pages 路由/缓存控制
 │   ├── manifest.json          # PWA 清单（DevTools）
 │   ├── robots.txt / sitemap.xml
-│   └── docs/km.txt            # 知识库样例数据
 ├── src/
 │   ├── index.tsx              # 入口：createRoot → <App/>（先 import './lib/monaco' 初始化编辑器）
 │   ├── vite-env.d.ts          # Vite 客户端类型（含 ?worker 模块声明）
@@ -135,7 +134,6 @@ react-tools/
 | `UrlEncoder` | URL 编解码 |
 | `CurlBuilder` | 根据 URL/Params/Headers 生成 cURL |
 | `PerformanceProfiler` | 上传性能数据 → 甘特图分析（`PerformanceGanttChart`） |
-| `KnowledgeManager` | 富文本知识库内容查看 |
 
 #### 云端存储工具（依赖 Worker + R2）
 | 组件 | localStorage 配置 key | 说明 |

@@ -10,7 +10,7 @@ import R2FileManager from './components/R2FileManager';
 import MarkdownViewer from './components/MarkdownViewer';
 import R2ImageManager from './components/R2ImageManager';
 import NotesManager from './components/NotesManager';
-import KnowledgeManager from './components/KnowledgeManager';
+import DrawioManager from './components/DrawioManager';
 import PerformanceProfiler from './components/PerformanceProfiler';
 import JsonlViewer from './components/JsonlViewer';
 import ImplViewer from './components/ImplViewer';
@@ -20,7 +20,7 @@ import Icon from './components/Icon';
 import SettingsDialog from './components/SettingsDialog';
 
 // 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'knowledge' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer' | 'curl-builder';
+type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'drawio' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer' | 'curl-builder';
 
 // 定义工具分类
 interface ToolCategory {
@@ -69,14 +69,8 @@ const toolCategories: ToolCategory[] = [
       { id: 'r2-manager', name: 'R2文件管理', description: 'Cloudflare R2存储文件管理' },
       { id: 'markdown-viewer', name: 'Markdown预览', description: 'Markdown在线预览与管理' },
       { id: 'r2-image-manager', name: 'R2图片管理', description: 'Cloudflare R2图片存储管理' },
-      { id: 'notes', name: '云端备忘录', description: '支持Markdown的云端备忘录' }
-    ]
-  },
-  {
-    name: '知识库',
-    icon: 'book',
-    tools: [
-      { id: 'knowledge', name: '知识库', description: '富文本知识库内容查看' }
+      { id: 'notes', name: '云端备忘录', description: '支持Markdown的云端备忘录' },
+      { id: 'drawio', name: '在线画图', description: '使用draw.io编辑并云端保存图表' }
     ]
   },
   {
@@ -100,7 +94,7 @@ const toolIdToPath: Record<ToolType, string> = {
   'markdown-viewer': 'markdown-viewer',
   'r2-image-manager': 'r2-image-manager',
   'notes': 'notes',
-  'knowledge': 'knowledge',
+  'drawio': 'drawio',
   'performance': 'performance',
   'jsonl-viewer': 'jsonl-viewer',
   'impl-viewer': 'impl-viewer',
@@ -120,7 +114,7 @@ const pathToToolId: Record<string, ToolType> = {
   'markdown-viewer': 'markdown-viewer',
   'r2-image-manager': 'r2-image-manager',
   'notes': 'notes',
-  'knowledge': 'knowledge',
+  'drawio': 'drawio',
   'performance': 'performance',
   'jsonl-viewer': 'jsonl-viewer',
   'impl-viewer': 'impl-viewer',
@@ -333,7 +327,7 @@ function App() {
           {activeTool === 'markdown-viewer' && <MarkdownViewer />}
           {activeTool === 'r2-image-manager' && <R2ImageManager />}
           {activeTool === 'notes' && <NotesManager />}
-          {activeTool === 'knowledge' && <KnowledgeManager />}
+          {activeTool === 'drawio' && <DrawioManager />}
           {activeTool === 'performance' && <PerformanceProfiler />}
           {activeTool === 'jsonl-viewer' && <JsonlViewer />}
           {activeTool === 'impl-viewer' && <ImplViewer />}

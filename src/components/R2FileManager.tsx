@@ -830,13 +830,13 @@ const R2FileManager = () => {
 
   return (
     <div className="tool-container r2-file-manager-layout">
-      <h2>R2 文件管理工具</h2>
       <div className="tool-content r2-split-layout">
         {/* 左侧：文件列表区域 */}
         <div className="file-list-section r2-left-panel">
           {/* 文件列表头部 - 包含面包屑和操作按钮 */}
           <div className="file-list-header">
             <div className="file-list-title">
+              <span className="r2-section-label">R2 文件</span>
               {/* 面包屑导航 */}
               {currentDirectory || directories.length > 0 ? (
                 <div className="breadcrumb-list">

@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   monacoLanguage: 'monaco_language',
   notesSidebarCollapsed: 'notes_sidebar_collapsed',
   notesSelectedId: 'notes_selected_id',
+  drawioSidebarCollapsed: 'drawio_sidebar_collapsed',
+  drawioSelectedId: 'drawio_selected_id',
   qrHistory: 'qr_history',
   urlHistory: 'url_history',
   base64History: 'base64_history',
