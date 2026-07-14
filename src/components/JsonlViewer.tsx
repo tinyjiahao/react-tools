@@ -104,6 +104,10 @@ const ROLE_COLOR: Record<string, string> = {
   tool: 'role-tool',
 };
 
+const COLLAPSE_TEXT_THRESHOLD = 900;
+const COLLAPSE_PARTS_THRESHOLD = 2;
+const COLLAPSED_PREVIEW_LENGTH = 280;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -262,6 +266,18 @@ const MessageBubble: React.FC<{
 }> = ({ msg, onCopy }) => {
   const isSystem = msg.role === 'system';
   const hasParts = msg.parts && msg.parts.length > 0;
+  const shouldCollapseByDefault = msg.content.length > COLLAPSE_TEXT_THRESHOLD ||
+    (msg.parts?.length ?? 0) > COLLAPSE_PARTS_THRESHOLD;
+  const [isExpanded, setIsExpanded] = useState(!shouldCollapseByDefault);
+  const canToggle = shouldCollapseByDefault;
+  const isCollapsed = canToggle && !isExpanded;
+  const preview = msg.content.length > COLLAPSED_PREVIEW_LENGTH
+    ? msg.content.slice(0, COLLAPSED_PREVIEW_LENGTH).trimEnd() + '...'
+    : msg.content;
+
+  useEffect(() => {
+    setIsExpanded(!shouldCollapseByDefault);
+  }, [msg.content, shouldCollapseByDefault]);
 
   return (
     <div className={`chat-message chat-message--${msg.role}`}>
@@ -274,6 +290,15 @@ const MessageBubble: React.FC<{
         )}
         {msg.meta && <span className="chat-message-meta">{msg.meta}</span>}
         <div className="chat-message-actions">
+          {canToggle && (
+            <button
+              className="chat-action-btn"
+              onClick={() => setIsExpanded(current => !current)}
+              title={isCollapsed ? '展开内容' : '折叠内容'}
+            >
+              {isCollapsed ? '展开' : '折叠'}
+            </button>
+          )}
           <button
             className="chat-action-btn"
             onClick={() => onCopy(msg.content)}
@@ -284,8 +309,18 @@ const MessageBubble: React.FC<{
         </div>
       </div>
 
-      <div className={`chat-message-body${isSystem ? ' chat-message-body--system' : ''}`}>
-        {hasParts ? (
+      <div className={`chat-message-body${isSystem ? ' chat-message-body--system' : ''}${isCollapsed ? ' chat-message-body--collapsed' : ''}`}>
+        {isCollapsed ? (
+          <>
+            <MarkdownContent content={preview} />
+            <button
+              className="chat-expand-inline"
+              onClick={() => setIsExpanded(true)}
+            >
+              展开内容
+            </button>
+          </>
+        ) : hasParts ? (
           msg.parts!.map((part, idx) => (
             <ContentPartRender key={idx} part={part} />
           ))

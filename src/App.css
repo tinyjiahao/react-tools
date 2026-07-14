@@ -6791,8 +6791,43 @@ body {
   overflow-y: auto;
 }
 
+.chat-message-body--collapsed {
+  max-height: 210px;
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-message-body--collapsed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), var(--cf-bg-primary));
+}
+
 .chat-message-body--system {
   padding: 14px 16px;
+}
+
+.chat-expand-inline {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 4px;
+  background: var(--cf-bg-primary);
+  color: var(--cf-orange);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chat-expand-inline:hover {
+  border-color: var(--cf-orange);
 }
 
 /* tool_use 渲染 */
