@@ -1196,14 +1196,315 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
 }
 
 .diff-output h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #424242;
+}
+
+.diff-viewer {
+  padding: 6px 10px 10px;
+}
+
+.diff-viewer .tool-content {
+  gap: 10px;
+}
+
+.diff-viewer .diff-inputs {
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.diff-viewer .text-section {
+  gap: 4px;
+}
+
+.diff-viewer .text-section h3 {
+  font-size: 14px;
+}
+
+.diff-viewer .text-section textarea {
+  height: clamp(160px, 28vh, 300px);
+  min-height: 140px;
+  padding: 10px;
+}
+
+.diff-method-toolbar,
+.diff-toolbar-controls,
+.diff-actions,
+.diff-result-header,
+.diff-result-title,
+.diff-inline-pane-header,
+.diff-summary {
+  display: flex;
+  align-items: center;
+}
+
+.diff-method-toolbar {
+  flex: 0 0 auto;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--cf-gray-border);
+}
+
+.diff-method-toolbar h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 17px;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+.diff-method-selector {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 5px;
+  background: var(--cf-bg-secondary);
+}
+
+.diff-method-selector button {
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--cf-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.diff-method-selector button:hover {
+  color: var(--cf-text-primary);
+  background: var(--cf-bg-hover);
+}
+
+.diff-method-selector button.active {
+  background: var(--cf-orange);
+  color: #fff;
+}
+
+.diff-json-status {
+  color: var(--cf-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.diff-toolbar-controls {
+  gap: 10px;
+  margin-left: auto;
+}
+
+.diff-toolbar-controls .format-toggle {
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.diff-toolbar-controls .format-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+}
+
+.diff-actions {
+  gap: 4px;
+}
+
+.diff-actions button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 4px;
+  background: var(--cf-bg-primary);
+  color: var(--cf-text-secondary);
+  cursor: pointer;
+}
+
+.diff-actions button:hover:not(:disabled) {
+  border-color: var(--cf-orange);
+  background: var(--cf-orange-light);
+  color: var(--cf-orange);
+}
+
+.diff-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.diff-result-header {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.diff-result-title {
+  gap: 8px;
+}
+
+.diff-only-toggle {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 4px;
+  background: var(--cf-bg-primary);
+  color: var(--cf-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.diff-only-toggle:hover {
+  border-color: var(--cf-orange);
+  color: var(--cf-orange);
+}
+
+.diff-only-toggle.active {
+  border-color: var(--cf-orange);
+  background: var(--cf-orange);
+  color: #fff;
+}
+
+.diff-summary {
+  gap: 8px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 12px;
+}
+
+.diff-summary span {
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.diff-summary-removed {
+  background: rgba(229, 57, 53, 0.12);
+  color: #c62828;
+}
+
+.diff-summary-added {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+.diff-json-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(246, 130, 31, 0.35);
+  border-radius: 6px;
+  background: var(--cf-orange-light);
+  color: var(--cf-text-primary);
+  font-size: 13px;
+}
+
+.diff-inline-result {
+  overflow: auto;
+  border: 1px solid var(--cf-gray-border);
+  border-radius: 8px;
+  background: var(--cf-bg-primary);
+}
+
+.diff-inline-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 640px;
+}
+
+.diff-inline-pane {
+  min-width: 0;
+}
+
+.diff-inline-pane + .diff-inline-pane {
+  border-left: 1px solid var(--cf-gray-border);
+}
+
+.diff-inline-pane-header {
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  background: var(--cf-bg-secondary);
+  color: var(--cf-text-secondary);
+  font-size: 12px;
+}
+
+.diff-inline-pane-header strong {
+  color: var(--cf-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.diff-inline-pane-header span {
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.diff-pane-removed {
+  background: rgba(229, 57, 53, 0.12);
+  color: #c62828;
+}
+
+.diff-pane-added {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+.diff-segment-view {
+  min-height: 160px;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  background: var(--cf-bg-primary);
+  color: var(--cf-text-primary);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff-segment-added,
+.diff-segment-removed {
+  padding-block: 2px;
+  border-radius: 2px;
+}
+
+.diff-segment-added {
+  background: #c8e6c9;
+  color: #1b5e20;
+  text-decoration: none;
+}
+
+.diff-segment-removed {
+  background: #ffcdd2;
+  color: #b71c1c;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+[data-theme="dark"] .diff-segment-added {
+  background: rgba(46, 125, 50, 0.42);
+  color: #b9f6ca;
+}
+
+[data-theme="dark"] .diff-segment-removed {
+  background: rgba(198, 40, 40, 0.42);
+  color: #ffcdd2;
 }
 
 /* 差异视图样式覆盖 */
@@ -1801,7 +2102,7 @@ body {
   /* DiffViewer组件响应式 */
   .diff-inputs {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 10px;
   }
 
   .button-section {
@@ -1812,6 +2113,36 @@ body {
 
   .button-section button {
     width: 100%;
+  }
+
+  .diff-method-toolbar {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .diff-method-toolbar h2 {
+    line-height: 28px;
+  }
+
+  .diff-toolbar-controls {
+    margin-left: auto;
+  }
+
+  .diff-method-selector {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .diff-method-selector button {
+    flex: 1;
+    min-width: max-content;
+    padding-inline: 10px;
+  }
+
+  .diff-result-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   /* QrCodeGenerator组件响应式 */
