@@ -1,4 +1,6 @@
 .performance-gantt-chart {
+  height: 100%;
+  min-height: 0;
   background: white;
   border-radius: 12px;
   border: 1px solid var(--cf-gray-border);
@@ -7,16 +9,39 @@
 
 .gantt-scroll-container {
   overflow: auto;
-  height: calc(100vh - 90px);
+  height: 100%;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--cf-gray-medium) var(--cf-gray-light);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.gantt-scroll-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.gantt-scroll-container::-webkit-scrollbar-track {
+  background: var(--cf-gray-light);
+}
+
+.gantt-scroll-container::-webkit-scrollbar-thumb {
+  border: 2px solid var(--cf-gray-light);
+  border-radius: 6px;
+  background: var(--cf-gray-medium);
 }
 
 .gantt-content {
   display: flex;
   min-width: 100%;
+  min-height: 100%;
 }
 
 .gantt-labels {
   width: 400px;
+  position: sticky;
+  left: 0;
   flex-shrink: 0;
   background: white;
   border-right: 1px solid var(--cf-gray-border);
@@ -24,6 +49,9 @@
 }
 
 .gantt-label-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -91,11 +119,12 @@
 .gantt-timeline-area {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
 }
 
 .gantt-timeline-header {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   border-bottom: 1px solid var(--cf-gray-border);
   background: var(--cf-gray-light);
   overflow: visible;

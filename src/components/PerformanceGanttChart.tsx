@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import './PerformanceGanttChart.css';
 
 interface PerformanceEvent {
@@ -23,6 +23,8 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
   selectedEvent
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const timelineAreaRef = useRef<HTMLDivElement>(null);
+  const [timeMarkerCount, setTimeMarkerCount] = useState(10);
   // 滚动位置只用 ref 跟踪，不再作为 state，
   // 避免之前 scroll 监听 → setState → effect 写回 DOM 形成的反馈环
   const scrollPositionRef = useRef({ left: 0, top: 0 });
@@ -52,6 +54,22 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
     }
   }, []);
 
+  useEffect(() => {
+    const timeline = timelineAreaRef.current;
+    if (!timeline || typeof ResizeObserver === 'undefined') return;
+
+    const updateMarkerCount = (width: number) => {
+      setTimeMarkerCount(Math.max(3, Math.min(10, Math.floor(width / 90))));
+    };
+    const observer = new ResizeObserver(entries => {
+      updateMarkerCount(entries[0].contentRect.width);
+    });
+
+    updateMarkerCount(timeline.getBoundingClientRect().width);
+    observer.observe(timeline);
+    return () => observer.disconnect();
+  }, []);
+
   if (events.length === 0) {
     return <div className="gantt-empty">暂无数据</div>;
   }
@@ -62,8 +80,6 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
 
   const rowHeight = 52;
   const headerHeight = 56;
-  const timeMarkerCount = 10;
-
   // 更丰富的分类颜色方案
   const colorPalette = [
     { bg: '#3b82f6', light: '#eff6ff' },   // 蓝色
@@ -134,7 +150,7 @@ const PerformanceGanttChart: React.FC<PerformanceGanttChartProps> = ({
           </div>
 
           {/* 右侧时间轴区域 */}
-          <div className="gantt-timeline-area">
+          <div className="gantt-timeline-area" ref={timelineAreaRef}>
             <div className="gantt-timeline-header" style={{ height: `${headerHeight}px` }}>
               {Array.from({ length: timeMarkerCount }, (_, i) => {
                 const time = minStart + (totalDuration * i) / (timeMarkerCount - 1);

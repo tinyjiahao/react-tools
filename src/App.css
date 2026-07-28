@@ -5968,6 +5968,37 @@ body {
   width: 100%;
 }
 
+.performance-profiler .tool-content {
+  gap: 8px;
+}
+
+.performance-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.performance-profiler .charts-container {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.performance-profiler .gantt-chart-container {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.performance-profiler .performance-gantt-chart {
+  flex: 1;
+}
+
 /* 原始数据视图 */
 .raw-data-container {
   background: var(--cf-bg-primary);
@@ -6256,27 +6287,68 @@ body {
 
 /* 事件详情样式 */
 .event-details {
+  display: flex;
+  flex: 0 0 clamp(320px, 30vw, 420px);
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   background: var(--cf-bg-primary);
-  padding: 20px;
   border-radius: 8px;
   border: 1px solid var(--cf-gray-border);
+  overflow: hidden;
 }
 
-.event-details h4 {
-  margin: 0 0 16px;
+.event-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--cf-gray-border);
+  background: var(--cf-gray-light);
+}
+
+.event-details-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--cf-text-primary);
+}
+
+.event-details-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cf-text-secondary);
+  cursor: pointer;
+}
+
+.event-details-close:hover {
+  border-color: var(--cf-gray-border);
+  background: var(--cf-bg-primary);
   color: var(--cf-text-primary);
 }
 
 .details-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 10px 12px;
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
 }
 
 .detail-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  min-width: 0;
+  gap: 2px;
 }
 
 .detail-item.full-width {
@@ -6284,24 +6356,39 @@ body {
 }
 
 .detail-label {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--cf-text-secondary);
 }
 
 .detail-value {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--cf-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .detail-json {
-  margin: 8px 0 0;
-  padding: 12px;
+  margin: 2px 0 0;
+  padding: 10px;
   background: var(--cf-gray-bg);
   border: 1px solid var(--cf-gray-border);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.45;
   overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .performance-workspace {
+    flex-direction: column;
+  }
+
+  .event-details {
+    flex: 0 0 min(320px, 42vh);
+    width: 100%;
+  }
 }
 
 /* 数据对话框样式 */

@@ -1,23 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as pako from 'pako';
 import html2canvas from 'html2canvas';
+import {
+  getSearchBackendSampleData,
+  type PerformanceData,
+  type PerformanceEvent,
+} from '../lib/performanceSampleData';
 import Icon from './Icon';
 import PerformanceGanttChart from './PerformanceGanttChart';
-
-// 性能数据类型定义
-interface PerformanceEvent {
-  name: string;
-  start: number;
-  duration: number;
-  category?: string;
-  details?: Record<string, any>;
-}
-
-interface PerformanceData {
-  title?: string;
-  events: PerformanceEvent[];
-  startTime?: number;
-}
 
 // 历史记录类型
 interface HistoryRecord {
@@ -56,7 +46,7 @@ const PerformanceProfiler = () => {
       }
     } else {
       // 没有保存的数据时加载示例数据
-      setData(getSampleData());
+      setData(getSearchBackendSampleData());
     }
 
     // 加载历史记录
@@ -73,40 +63,6 @@ const PerformanceProfiler = () => {
       }
     }
   }, []);
-
-  // 获取示例数据
-  const getSampleData = (): PerformanceData => {
-    return {
-      title: 'Web应用完整加载流程性能分析',
-      events: [
-        // 网络请求阶段
-        { name: 'DNS解析与TCP连接', start: 0, duration: 80, category: 'network' },
-        { name: 'TLS握手建立安全连接', start: 80, duration: 60, category: 'network' },
-        { name: 'HTTP请求发送头部信息', start: 140, duration: 40, category: 'network' },
-        { name: '服务器响应等待时间TTFB', start: 180, duration: 200, category: 'network' },
-        { name: 'HTML文档内容下载传输', start: 380, duration: 150, category: 'network' },
-        { name: 'CSS样式表文件并行加载', start: 400, duration: 180, category: 'network' },
-        { name: 'JavaScript脚本文件异步加载', start: 420, duration: 220, category: 'network' },
-
-        // HTML解析阶段
-        { name: 'HTML标记词法分析和语法解析', start: 530, duration: 120, category: 'parsing' },
-        { name: 'DOM树构建和节点创建', start: 580, duration: 150, category: 'parsing' },
-        { name: 'CSS样式表规则解析处理', start: 650, duration: 100, category: 'parsing' },
-
-        // JavaScript执行阶段
-        { name: '主线程JavaScript代码执行初始化', start: 750, duration: 200, category: 'scripting' },
-        { name: 'React框架虚拟DOM对比计算', start: 900, duration: 180, category: 'scripting' },
-        { name: '组件生命周期方法和钩子函数执行', start: 950, duration: 140, category: 'scripting' },
-        { name: '事件监听器注册和绑定操作', start: 1050, duration: 90, category: 'scripting' },
-
-        // 渲染和绘制阶段
-        { name: '样式重新计算和层叠规则应用', start: 1400, duration: 130, category: 'rendering' },
-        { name: '页面布局Layout重排和几何信息计算', start: 1500, duration: 160, category: 'rendering' },
-        { name: '绘制Paint指令生成和像素填充', start: 1620, duration: 140, category: 'rendering' },
-        { name: '合成Composite图层合并和纹理上传GPU', start: 1720, duration: 120, category: 'rendering' },
-      ]
-    };
-  };
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
@@ -260,10 +216,14 @@ const PerformanceProfiler = () => {
 
   // 获取分类颜色 - 统一的颜色配置
   const CATEGORY_COLORS: Record<string, string> = {
-    network: '#3b82f6',
-    parsing: '#10b981',
-    scripting: '#f59e0b',
-    rendering: '#8b5cf6',
+    request: '#475569',
+    serial: '#2563eb',
+    'query-parallel': '#0891b2',
+    'recall-parallel': '#059669',
+    'feature-parallel': '#7c3aed',
+    ranking: '#d97706',
+    'response-parallel': '#db2777',
+    async: '#dc2626',
     default: '#6b7280'
   };
 
@@ -490,85 +450,8 @@ const PerformanceProfiler = () => {
     );
   };
 
-  // 生成在线服务性能分析示例数据（含嵌套调用关系）
-  const getOnlineServiceSampleData = (): PerformanceData => {
-    return {
-      title: '电商搜索服务请求链路性能分析',
-      events: [
-        // ===== A. 请求总入口 =====
-        { name: 'A1-请求鉴权与Token校验', start: 0, duration: 5, category: 'A-请求入口' },
-        { name: 'A2-请求参数解析与校验', start: 5, duration: 3, category: 'A-请求入口' },
-        { name: 'A3-AB实验分桶命中', start: 8, duration: 8, category: 'A-请求入口' },
-
-        // ===== B. 查询理解 (QU) 阶段 =====
-        { name: 'B1-查询理解总流程', start: 16, duration: 94, category: 'A-请求入口' },
-        { name: 'B1-C1-分词与词性标注', start: 16, duration: 12, category: 'B1-查询理解总流程' },
-        { name: 'B1-C2-意图识别总流程', start: 28, duration: 50, category: 'B1-查询理解总流程' },
-        { name: 'B1-C2-D1-意图分类模型推理', start: 28, duration: 35, category: 'B1-C2-意图识别总流程' },
-        { name: 'B1-C2-D2-意图置信度评估', start: 63, duration: 10, category: 'B1-C2-意图识别总流程' },
-        { name: 'B1-C2-D3-多意图合并与消歧', start: 73, duration: 5, category: 'B1-C2-意图识别总流程' },
-        { name: 'B1-C3-实体识别与NER抽取', start: 28, duration: 28, category: 'B1-查询理解总流程' },
-        { name: 'B1-C4-查询改写总流程', start: 78, duration: 26, category: 'B1-查询理解总流程' },
-        { name: 'B1-C4-D1-拼写纠错', start: 78, duration: 8, category: 'B1-C4-查询改写总流程' },
-        { name: 'B1-C4-D2-同义词扩展', start: 86, duration: 12, category: 'B1-C4-查询改写总流程' },
-        { name: 'B1-C4-D3-查询扩展结果排序', start: 98, duration: 6, category: 'B1-C4-查询改写总流程' },
-        { name: 'B1-C5-地域与商圈信息补全', start: 104, duration: 6, category: 'B1-查询理解总流程' },
-
-        // ===== C. 多路召回阶段 (并行) =====
-        { name: 'C1-多路召回总流程', start: 110, duration: 85, category: 'A-请求入口' },
-        { name: 'C1-D1-倒排索引召回', start: 110, duration: 45, category: 'C1-多路召回总流程' },
-        { name: 'C1-D2-向量语义召回', start: 110, duration: 68, category: 'C1-多路召回总流程' },
-        { name: 'C1-D3-个性化协同过滤召回', start: 110, duration: 55, category: 'C1-多路召回总流程' },
-        { name: 'C1-D4-店铺GraphWalk召回', start: 112, duration: 72, category: 'C1-多路召回总流程' },
-        { name: 'C1-D5-广告商品召回', start: 112, duration: 30, category: 'C1-多路召回总流程' },
-        { name: 'C1-D6-运营活动强插召回', start: 115, duration: 8, category: 'C1-多路召回总流程' },
-        { name: 'C1-D7-多路结果合并与去重', start: 184, duration: 11, category: 'C1-多路召回总流程' },
-
-        // ===== D. 排序阶段 =====
-        { name: 'D1-排序总流程', start: 195, duration: 120, category: 'A-请求入口' },
-        { name: 'D1-E1-粗排过滤', start: 195, duration: 22, category: 'D1-排序总流程' },
-        { name: 'D1-E1-F1-销量过滤', start: 195, duration: 6, category: 'D1-E1-粗排过滤' },
-        { name: 'D1-E1-F2-评分过滤', start: 201, duration: 8, category: 'D1-E1-粗排过滤' },
-        { name: 'D1-E1-F3-距离过滤', start: 209, duration: 8, category: 'D1-E1-粗排过滤' },
-        { name: 'D1-E2-特征提取总流程', start: 217, duration: 30, category: 'D1-排序总流程' },
-        { name: 'D1-E2-F1-用户画像特征提取', start: 217, duration: 15, category: 'D1-E2-特征提取总流程' },
-        { name: 'D1-E2-F2-商品基础特征提取', start: 217, duration: 12, category: 'D1-E2-特征提取总流程' },
-        { name: 'D1-E2-F3-上下文场景特征', start: 220, duration: 18, category: 'D1-E2-特征提取总流程' },
-        { name: 'D1-E2-F4-交叉特征计算', start: 232, duration: 15, category: 'D1-E2-特征提取总流程' },
-        { name: 'D1-E3-精排模型推理', start: 247, duration: 55, category: 'D1-排序总流程' },
-        { name: 'D1-E4-广告排序竞价', start: 247, duration: 40, category: 'D1-排序总流程' },
-        { name: 'D1-E5-业务规则调权', start: 302, duration: 8, category: 'D1-排序总流程' },
-
-        // ===== E. 重排策略阶段 =====
-        { name: 'E1-重排策略总流程', start: 315, duration: 38, category: 'A-请求入口' },
-        { name: 'E1-F1-多样性打散(MMR)', start: 315, duration: 12, category: 'E1-重排策略总流程' },
-        { name: 'E1-F2-坑位分配与广告植入', start: 327, duration: 10, category: 'E1-重排策略总流程' },
-        { name: 'E1-F3-运营活动坑位填充', start: 327, duration: 8, category: 'E1-重排策略总流程' },
-        { name: 'E1-F4-地域化重排(同城优先)', start: 337, duration: 6, category: 'E1-重排策略总流程' },
-        { name: 'E1-F5-最终列表截断与分页', start: 343, duration: 10, category: 'E1-重排策略总流程' },
-
-        // ===== F. 详情补全阶段 (并行RPC) =====
-        { name: 'F1-详情补全总流程', start: 353, duration: 50, category: 'A-请求入口' },
-        { name: 'F1-G1-商品基本信息批量查询', start: 353, duration: 35, category: 'F1-详情补全总流程' },
-        { name: 'F1-G2-实时库存与价格查询', start: 353, duration: 42, category: 'F1-详情补全总流程' },
-        { name: 'F1-G3-营销优惠信息查询', start: 355, duration: 28, category: 'F1-详情补全总流程' },
-        { name: 'F1-G4-评价摘要与评分查询', start: 355, duration: 22, category: 'F1-详情补全总流程' },
-        { name: 'F1-G5-店铺信息批量查询', start: 357, duration: 30, category: 'F1-详情补全总流程' },
-        { name: 'F1-G6-图片CDN地址签名生成', start: 387, duration: 8, category: 'F1-详情补全总流程' },
-
-        // ===== G. 组装输出阶段 =====
-        { name: 'G1-组装与输出总流程', start: 403, duration: 17, category: 'A-请求入口' },
-        { name: 'G1-H1-结果DTO组装与序列化', start: 403, duration: 10, category: 'G1-组装与输出总流程' },
-        { name: 'G1-H2-埋点日志异步写入', start: 403, duration: 5, category: 'G1-组装与输出总流程' },
-        { name: 'G1-H3-AB实验指标上报', start: 408, duration: 3, category: 'G1-组装与输出总流程' },
-        { name: 'G1-H4-监控指标采集', start: 408, duration: 2, category: 'G1-组装与输出总流程' },
-        { name: 'G1-H5-响应压缩与返回', start: 413, duration: 7, category: 'G1-组装与输出总流程' },
-      ]
-    };
-  };
-
   const handleLoadSampleData = () => {
-    const sampleData = getOnlineServiceSampleData();
+    const sampleData = getSearchBackendSampleData();
     setData(sampleData);
     localStorage.setItem('performanceData', JSON.stringify(sampleData));
     setSelectedEvent(null);
@@ -586,7 +469,7 @@ const PerformanceProfiler = () => {
   };
 
   return (
-    <div className="tool-container">
+    <div className="tool-container performance-profiler">
       <div className="performance-header">
         <h2>性能分析器</h2>
         <div className="header-actions">
@@ -702,56 +585,68 @@ const PerformanceProfiler = () => {
               </div>
             </div>
 
-            <div className="charts-container">
-              {viewMode === 'gantt' && renderGanttChart()}
-              {viewMode === 'timeline' && renderTimelineView()}
-              {viewMode === 'table' && renderTableView()}
-              {viewMode === 'raw' && (
-                <div className="raw-data-container">
-                  <div className="raw-data-header">
-                    <span>原始 JSON 数据</span>
+            <div className="performance-workspace">
+              <div className="charts-container">
+                {viewMode === 'gantt' && renderGanttChart()}
+                {viewMode === 'timeline' && renderTimelineView()}
+                {viewMode === 'table' && renderTableView()}
+                {viewMode === 'raw' && (
+                  <div className="raw-data-container">
+                    <div className="raw-data-header">
+                      <span>原始 JSON 数据</span>
+                      <button
+                        className="btn-copy-raw"
+                        onClick={() => navigator.clipboard.writeText(JSON.stringify(data, null, 2))}
+                      >
+                        <Icon name="copy" size={14} />
+                        复制
+                      </button>
+                    </div>
+                    <pre className="raw-data-content">{JSON.stringify(data, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+
+              {selectedEvent && (
+                <aside className="event-details" aria-label="事件详情">
+                  <div className="event-details-header">
+                    <h4>事件详情</h4>
                     <button
-                      className="btn-copy-raw"
-                      onClick={() => navigator.clipboard.writeText(JSON.stringify(data, null, 2))}
+                      className="event-details-close"
+                      onClick={() => setSelectedEvent(null)}
+                      title="折叠详情"
+                      aria-label="折叠事件详情"
                     >
-                      <Icon name="copy" size={14} />
-                      复制
+                      <Icon name="close" size={16} />
                     </button>
                   </div>
-                  <pre className="raw-data-content">{JSON.stringify(data, null, 2)}</pre>
-                </div>
+                  <div className="details-grid">
+                    <div className="detail-item full-width">
+                      <span className="detail-label">名称</span>
+                      <span className="detail-value">{selectedEvent.name}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">分类</span>
+                      <span className="detail-value">{selectedEvent.category || '未分类'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">开始时间</span>
+                      <span className="detail-value">{selectedEvent.start.toFixed(2)}ms</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">持续时间</span>
+                      <span className="detail-value">{selectedEvent.duration.toFixed(2)}ms</span>
+                    </div>
+                    {selectedEvent.details && (
+                      <div className="detail-item full-width">
+                        <span className="detail-label">详细信息</span>
+                        <pre className="detail-json">{JSON.stringify(selectedEvent.details, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                </aside>
               )}
             </div>
-
-            {selectedEvent && (
-              <div className="event-details">
-                <h4>事件详情</h4>
-                <div className="details-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">名称:</span>
-                    <span className="detail-value">{selectedEvent.name}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">分类:</span>
-                    <span className="detail-value">{selectedEvent.category || '未分类'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">开始时间:</span>
-                    <span className="detail-value">{selectedEvent.start.toFixed(2)}ms</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">持续时间:</span>
-                    <span className="detail-value">{selectedEvent.duration.toFixed(2)}ms</span>
-                  </div>
-                  {selectedEvent.details && (
-                    <div className="detail-item full-width">
-                      <span className="detail-label">详细信息:</span>
-                      <pre className="detail-json">{JSON.stringify(selectedEvent.details, null, 2)}</pre>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </>
         )}
 
