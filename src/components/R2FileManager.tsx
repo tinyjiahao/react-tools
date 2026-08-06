@@ -4,7 +4,7 @@ import MessageToast from './MessageToast';
 import Icon from './Icon';
 import type { Config, FileItem } from '../lib/types';
 import { STORAGE_KEYS, safeGetConfig } from '../lib/storage';
-import { callWorkerApi, uploadWithProgress } from '../lib/r2Api';
+import { callWorkerApi, createPdfPreviewBlob, uploadWithProgress } from '../lib/r2Api';
 
 interface DirectoryItem {
   name: string;
@@ -685,8 +685,8 @@ const R2FileManager = () => {
           throw new Error(`预览失败 (${response.status})`);
         }
 
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
+        const pdfData = await response.arrayBuffer();
+        const blobUrl = URL.createObjectURL(createPdfPreviewBlob(pdfData));
         setPreviewFile({ name: key, content: blobUrl, type: 'pdf' });
       } else {
         // 文本文件处理 - 先检查文件大小
@@ -1048,19 +1048,11 @@ const R2FileManager = () => {
                     sandbox="allow-scripts allow-same-origin"
                   />
                 ) : previewFile.type === 'pdf' ? (
-                  <object
-                    data={previewFile.content}
-                    type="application/pdf"
+                  <iframe
+                    src={`${previewFile.content}#view=FitH`}
                     className="preview-pdf"
                     title={previewFile.name}
-                  >
-                    <div className="preview-pdf-fallback">
-                      <p>PDF 文件预览</p>
-                      <a href={previewFile.content} download={previewFile.name.includes('/') ? previewFile.name.substring(previewFile.name.lastIndexOf('/') + 1) : previewFile.name} className="btn btn-primary">
-                        下载 PDF 文件
-                      </a>
-                    </div>
-                  </object>
+                  />
                 ) : previewFile.type === 'text' ? (
                   <pre className="preview-code">{previewFile.content}</pre>
                 ) : null}

@@ -3940,23 +3940,6 @@ body {
   border: none;
 }
 
-.preview-pdf-fallback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  height: 100%;
-  padding: 40px;
-  text-align: center;
-  color: var(--cf-text-secondary);
-}
-
-.preview-pdf-fallback p {
-  margin: 0;
-  font-size: 16px;
-}
-
 /* R2 配置样式 */
 .config-section {
   max-width: 800px;

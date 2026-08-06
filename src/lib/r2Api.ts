@@ -10,6 +10,11 @@
 
 import type { Config } from './types';
 
+/** 为浏览器内嵌预览创建 MIME 类型可靠的 PDF Blob。 */
+export function createPdfPreviewBlob(data: BlobPart): Blob {
+  return new Blob([data], { type: 'application/pdf' });
+}
+
 /** 统一的 Worker JSON 调用（list/delete/rename 等非上传接口） */
 export async function callWorkerApi(
   action: string,
