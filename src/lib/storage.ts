@@ -10,6 +10,7 @@ import type { Config } from './types';
 
 /** 所有 localStorage key 集中声明，避免散落字符串拼写错误 */
 export const STORAGE_KEYS = {
+  jsonWorkspacePreferences: 'json_workspace_preferences',
   r2Config: 'r2_config',
   r2ImageConfig: 'r2_image_config',
   darkMode: 'darkMode',
@@ -56,7 +57,7 @@ export function safeGetConfig(key: string): Config | null {
     typeof (parsed as Config).workerUrl === 'string' &&
     typeof (parsed as Config).apiToken === 'string'
   ) {
-    return parsed as Config;
+    return { ...(parsed as Config), workerUrl: '/api' };
   }
   return null;
 }

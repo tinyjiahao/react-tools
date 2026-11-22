@@ -11,6 +11,7 @@
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "allowJs": true,
     "noEmit": true,
     "composite": true,
     "jsx": "react-jsx",
@@ -27,6 +28,6 @@
     "resolveJsonModule": true,
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src"],
+  "include": ["src", "shared", "worker"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

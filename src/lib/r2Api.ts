@@ -29,7 +29,7 @@ export async function callWorkerApi(
     headers['Authorization'] = `Bearer ${config.apiToken}`;
   }
 
-  const response = await fetch(`${config.workerUrl}?action=${action}`, {
+  const response = await fetch(`/api?action=${action}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -81,7 +81,7 @@ export function uploadWithProgress(
       reject(new Error('上传失败，请检查网络连接'));
     });
 
-    xhr.open('POST', `${config.workerUrl}?action=upload`);
+    xhr.open('POST', `/api?action=upload`);
     // token 走 header，不进 URL —— 修复 P0 token 泄露
     if (config.apiToken) {
       xhr.setRequestHeader('Authorization', `Bearer ${config.apiToken}`);

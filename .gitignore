@@ -3,7 +3,6 @@ node_modules
 /.pnp
 .pnp.js
 yarn.lock
-package-lock.json
 .claude/
 
 # 测试覆盖率
@@ -85,3 +84,7 @@ storybook-static
 # 本地工具/流量日志
 .agents/
 provider-traffic.jsonl
+
+.wrangler/
+.dev.vars*
+!.dev.vars.example

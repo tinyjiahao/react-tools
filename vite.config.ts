@@ -1,21 +1,15 @@
-import { defineConfig } from 'vitest/config';
+import { cloudflare } from '@cloudflare/vite-plugin';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    cloudflare({ viteEnvironment: { name: "worker" } }),
   ],
-  // 保持与原 CRA 一致的输出目录，Cloudflare Pages 部署配置无需改动
-  build: {
-    outDir: 'build',
-  },
+  environments: { worker: { build: { sourcemap: true } } },
   server: {
     port: 3000,
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/setupTests.ts',
   },
 });

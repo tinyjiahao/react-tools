@@ -1,6 +1,6 @@
 # React Tools 项目架构文档
 
-一个部署在 **Cloudflare Pages** 上的纯前端开发者工具箱（React 19 + TypeScript），配合一个独立的 **Cloudflare Worker** 作为对象存储（R2）代理后端。所有工具完全运行在浏览器端，后端仅承担存储代理职责。
+一个部署在 **Cloudflare Workers** 上的纯前端开发者工具箱（React 19 + TypeScript），通过同源 **Cloudflare Worker** 提供对象存储（R2）代理。所有工具完全运行在浏览器端，后端仅承担存储代理职责。
 
 ---
 
@@ -8,10 +8,10 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| 框架 | React 19 + TypeScript 5.9 | 新 JSX transform（无需 `import React`） |
-| 构建 | Vite 8 + @vitejs/plugin-react | `npm run build` 产出到 `build/`；dev server 端口 3000 |
-| 部署 | Cloudflare Pages | 静态托管，依赖 `_redirects` / `_routes.json` |
-| 后端 | Cloudflare Worker | 独立部署，作为 R2 存储代理（见 `docs/worker.js`） |
+| 框架 | React 19 + TypeScript 6 | 新 JSX transform（无需 `import React`） |
+| 构建 | Vite 8 + @vitejs/plugin-react | `npm run build` 产出到 `dist/client` 与 `dist/worker`；dev server 端口 3000 |
+| 部署 | Cloudflare Workers | 静态资源与 Worker 统一部署，Wrangler assets 提供 SPA fallback |
+| 后端 | Cloudflare Worker | 同源统一部署，作为 R2 存储代理（见 `worker/services/storage.js`） |
 | 存储 | Cloudflare R2 | 对象存储，存放文件/图片/笔记/Markdown |
 | 编辑器 | Monaco Editor | **本地打包**（`src/lib/monaco.ts` 配置 worker 与 loader，不依赖 CDN） |
 | 渲染 | react-markdown + remark-gfm + rehype-highlight | Markdown 渲染 |
@@ -21,38 +21,36 @@
 
 ## 2. 目录结构
 
-```
+```text
 react-tools/
-├── index.html                 # Vite 入口 HTML（项目根，含 SEO meta 与 /src/index.tsx 入口脚本）
-├── vite.config.ts             # Vite 配置（react 插件、输出目录 build、端口 3000）
-├── tsconfig.json              # 应用 TS 配置（strict + noUnusedLocals/Parameters）
-├── tsconfig.node.json         # vite.config.ts 的 TS 配置（composite，供 tsc -b 引用）
-├── public/                    # 静态资源（构建时原样拷贝到 build/）
-│   ├── _redirects             # SPA 回退规则：/* /index.html 200
-│   ├── _routes.json           # Pages 路由/缓存控制
-│   ├── manifest.json          # PWA 清单（DevTools）
-│   ├── robots.txt / sitemap.xml
 ├── src/
-│   ├── index.tsx              # 入口：createRoot → <App/>（先 import './lib/monaco' 初始化编辑器）
-│   ├── vite-env.d.ts          # Vite 客户端类型（含 ?worker 模块声明）
-│   ├── App.tsx                # 主框架：导航/路由/布局切换/主题
-│   ├── App.css                # 全局样式 + CSS 变量主题系统
-│   ├── index.css              # 基础 reset
-│   ├── lib/                   # 共享模块
-│   │   ├── types.ts           # Config / FileItem（4 个 R2 组件共用）
-│   │   ├── storage.ts         # safeGetConfig / safeSetItem / STORAGE_KEYS 常量
-│   │   ├── r2Api.ts           # callWorkerApi / uploadWithProgress（token 走 header）
-│   │   └── monaco.ts          # Monaco 本地打包配置（loader.config + self.MonacoEnvironment + 5 个 ?worker）
-│   ├── components/            # 全部工具组件（详见 §4）
-│   └── types/                 # 第三方类型声明（snappyjs）
-├── docs/
-│   ├── worker.js              # Cloudflare Worker 源码（R2 代理）
-│   ├── CLOUDFLARE_R2_SETUP.md # R2 配置说明
-│   └── markdown_page.md
-├── data/
-│   └── gante.json             # 性能分析器样例数据
-├── build/                     # 生产构建产物（gitignore）
-└── package.json
+│   ├── index.tsx / index.css  # 入口、Monaco 初始化、基础 reset
+│   ├── App.tsx / App.css      # 应用框架、导航、主题及全局样式
+│   ├── app/tools.ts          # 工具分类、ToolType 与路由映射
+│   ├── components/
+│   │   ├── common/           # Icon、MessageToast、SettingsDialog
+│   │   ├── json/             # JSON 工作区、文件树、编辑器、面包屑
+│   │   ├── llm/              # JSONL、IMPL、SSE 查看器
+│   │   ├── text/             # Diff、Base64、字节、URL 编解码、正则
+│   │   ├── network/          # cURL、JWT、二维码
+│   │   ├── storage/          # R2 文件/图片、Markdown、笔记、Drawio
+│   │   └── developer/        # 性能分析及甘特图、时间戳、UUID
+│   ├── lib/
+│   │   ├── json/             # IndexedDB、自动保存 hook、结构解析及 worker
+│   │   ├── performance/      # 性能分析示例数据
+│   │   └── *.ts              # 跨功能共享：monaco、storage、r2Api、types
+│   ├── types/                # 第三方 ambient 类型声明
+│   └── setupTests.ts         # Vitest 测试初始化
+├── worker/
+│   ├── index.ts              # Hono 入口，同源 /api 路由
+│   └── services/storage.js   # R2 存储代理
+├── public/                   # 静态资源
+├── shared/ / data/           # 现有 JSON 样例文件
+├── docs/                     # 部署说明、设计与实施方案
+├── frame.md                  # 架构说明
+├── vite.config.ts / vitest.config.ts
+├── wrangler.jsonc            # Workers 统一部署配置
+└── package.json              # dev/build/test:run/deploy 等脚本
 ```
 
 ---
@@ -61,7 +59,7 @@ react-tools/
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    浏览器（Cloudflare Pages）                  │
+│                    浏览器（Cloudflare Workers）                  │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │  App.tsx                                                │  │
 │  │   ├─ 顶部/侧边 导航（分类 → 工具下拉）                    │  │
@@ -71,7 +69,7 @@ react-tools/
 │  └───────────────────────┬────────────────────────────────┘  │
 │                          │ 条件渲染                            │
 │  ┌───────────────────────▼────────────────────────────────┐  │
-│  │              16 个工具组件（components/）                 │  │
+│  │              分类工具组件（components/）                 │  │
 │  │   纯前端工具 ────────────────────────────────────────    │  │
 │  │   JSON / Diff / QR / URL / Byte / Base64 / JSONL ...    │  │
 │  │   云端存储工具 ─────────────────────────────────────     │  │
@@ -82,8 +80,8 @@ react-tools/
                         │ fetch（Bearer token）
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                Cloudflare Worker（独立部署）                    │
-│   docs/worker.js                                             │
+│                Cloudflare Worker（同源统一部署）                    │
+│   worker/services/storage.js                                             │
 │   ├─ GET  /file/{key}     文件直读（图片免 token）             │
 │   ├─ POST ?action=list    列文件（支持 prefix 目录过滤）       │
 │   ├─ POST ?action=upload  上传（FormData，path 决定 key）      │
@@ -110,20 +108,20 @@ react-tools/
 
 `index.tsx` → `createRoot` 挂载 `<App/>`。`App.tsx` 是唯一的状态中枢，负责：
 
-1. **工具注册表**：`toolCategories` 数组定义 6 个分类下的全部工具（id / 名称 / 描述）。新增工具只需在此注册并补一个组件分支。
-2. **客户端路由**：基于 `window.location.pathname` 的轻量自实现路由，`toolIdToPath` / `pathToToolId` 维护双向映射，切换工具时 `history.replaceState` 更新 URL（无刷新）。
+1. **工具注册表**：`app/tools.ts` 中的 `toolCategories` 数组定义 6 个分类下的全部工具（id / 名称 / 描述）。新增工具只需在此注册并补一个组件分支。
+2. **客户端路由**：使用 React Router 的 BrowserRouter、useLocation 和 useNavigate；`app/tools.ts` 中的 `toolIdToPath` / `pathToToolId` 维护双向映射。
 3. **布局模式**：`top`（顶部导航栏）↔ `left`（侧边栏），状态存于 `localStorage.layoutMode`，下拉菜单的展开/折叠行为随布局不同。
 4. **主题**：深色模式（`data-theme` 属性）+ 主题色（`--cf-orange` CSS 变量），均持久化到 `localStorage`。
 5. **条件渲染**：通过一连串 `activeTool === 'xxx' && <Component/>` 渲染当前工具（非路由库的懒加载）。
 
 ### 4.2 工具组件（`src/components/`）
 
-共 16 个业务组件 + 2 个辅助组件。按数据来源可分为两类：
+组件按导航分类放置，测试及专用样式与组件相邻。按数据来源可分为两类：
 
 #### 纯前端工具（无后端依赖）
 | 组件 | 功能 |
 |------|------|
-| `JsonFormatter` | JSON 格式化/压缩/校验（JSONPath 查询） |
+| `JsonFormatter` | JSON 格式化/压缩/校验、搜索替换与结构面包屑；JsonWorkspace 管理本地文件 |
 | `JsonlViewer` | JSONL 逐行结构化查看 |
 | `ImplViewer` | IMPL_JSON 代码实现方案解析 |
 | `SseViewer` | SSE 流式响应拼接查看 |
@@ -194,7 +192,7 @@ react-tools/
 
 ## 5. 后端架构（Cloudflare Worker）
 
-源码位于 `docs/worker.js`，是一个单文件 Service Worker（`export default { fetch }`），独立部署到 Cloudflare。它**不随前端构建产物一起部署**，需在 Cloudflare 控制台单独创建。
+源码位于 `worker/services/storage.js`，是一个单文件 Service Worker（`export default { fetch }`），同源统一部署到 Cloudflare。它**不随前端构建产物一起部署**，需在 Cloudflare 控制台单独创建。
 
 ### 5.1 接口
 
@@ -224,45 +222,15 @@ react-tools/
 
 ---
 
-## 6. 部署
+## 6. 部署与命令
 
-### 6.1 前端（Cloudflare Pages）
-
-1. `npm run build` → `build/` 目录。
-2. 在 Cloudflare Pages 关联仓库，构建命令 `npm run build`，输出目录 `build`。
-3. **SPA 回退**由 `public/_redirects`（`/* /index.html 200`）保证客户端路由的深链接可用。
-4. `public/_routes.json` 控制哪些路径走 Functions / 缓存。
-
-### 6.2 后端 Worker（手动部署）
-
-1. 在 Cloudflare Dashboard 创建 Worker。
-2. 粘贴 `docs/worker.js` 内容（**这是唯一维护来源**）。
-3. 绑定 R2 存储桶（`R2_BUCKET`）。
-4. 设置 `API_TOKEN` secret（必填，未配置将拒绝所有写操作）。
-5. 设置 `ALLOWED_ORIGINS` 为前端 Pages 域名（必填，用于 CORS 白名单）。
-6. 将 Worker URL 填入前端"设置 → R2 存储"。
-
-> 前端 `SettingsDialog` 提供 Worker 配置要点与部署步骤说明，代码本体以 `docs/worker.js` 为准。
-
----
-
-## 7. 命令脚本
-
-```bash
-npm run dev    # 本地开发（Vite dev server，http://localhost:3000）
-npm run build  # tsc -b 类型检查 + vite build，生产构建到 build/
-npm run preview # 预览生产构建产物
-```
-
-> 注：项目已从 CRA 迁移到 Vite。构建产物输出目录保持 `build/`，Cloudflare Pages 部署配置无需改动。
-> 测试套件（Jest）随迁移移除，后续如需补测试建议使用 Vitest。
-> Monaco 编辑器本地打包（`src/lib/monaco.ts`），不依赖 CDN。
+以 [统一部署指南](docs/CLOUDFLARE_R2_SETUP.md) 为准。使用 Cloudflare Vite Plugin 构建，执行 `npm run deploy` 一次发布静态资源与 Worker。
 
 ---
 
 ## 8. 关键约定与注意点
 
-- **新增工具的步骤**：① 在 `components/` 新建组件；② 在 `App.tsx` 的 `ToolType`、`toolCategories`、`toolIdToPath`、`pathToToolId`、条件渲染 5 处登记。
+- **新增工具的步骤**：① 在 `components/` 对应分类新建组件；② 更新 `app/tools.ts` 的类型、分类和路由映射；③ 在 `App.tsx` 添加导入与渲染分支。
 - **纯前端优先**：除非需要持久化到云端，否则工具应完全在浏览器内运算，不引入后端依赖。
 - **存储配置隔离**：`R2ImageManager` 使用独立的 `r2_image_config`，其余三个存储工具共用 `r2_config`。
 - **鉴权**：图片类资源为方便外链展示免 token，其他 R2 操作均需 token。
@@ -270,4 +238,4 @@ npm run preview # 预览生产构建产物
 
 ---
 
-*文档基于截至 2026-06 的代码现状梳理，后续组件/接口变更请同步更新。*
+*目录按功能分类；后续组件、接口与部署变更请同步更新本文。*

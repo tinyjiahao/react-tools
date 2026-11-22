@@ -1,151 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import { toolCategories, toolIdToPath, pathToToolId } from './app/tools';
+import type { ToolType } from './app/tools';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-import JsonFormatter from './components/JsonFormatter';
-import DiffViewer from './components/DiffViewer';
-import QrCodeGenerator from './components/QrCodeGenerator';
-import UrlEncoder from './components/UrlEncoder';
-import ByteConverter from './components/ByteConverter';
-import Base64Encoder from './components/Base64Encoder';
-import R2FileManager from './components/R2FileManager';
-import MarkdownViewer from './components/MarkdownViewer';
-import R2ImageManager from './components/R2ImageManager';
-import NotesManager from './components/NotesManager';
-import DrawioManager from './components/DrawioManager';
-import PerformanceProfiler from './components/PerformanceProfiler';
-import JsonlViewer from './components/JsonlViewer';
-import ImplViewer from './components/ImplViewer';
-import SseViewer from './components/SseViewer';
-import CurlBuilder from './components/CurlBuilder';
-import RegexTester from './components/RegexTester';
-import TimestampConverter from './components/TimestampConverter';
-import UuidGenerator from './components/UuidGenerator';
-import JwtDecoder from './components/JwtDecoder';
-import Icon from './components/Icon';
-import SettingsDialog from './components/SettingsDialog';
-
-// 定义工具类型
-type ToolType = 'json' | 'diff' | 'qr' | 'url-encoder' | 'byte-converter' | 'base64' | 'r2-manager' | 'markdown-viewer' | 'r2-image-manager' | 'notes' | 'drawio' | 'performance' | 'jsonl-viewer' | 'impl-viewer' | 'sse-viewer' | 'curl-builder' | 'regex' | 'timestamp' | 'uuid' | 'jwt';
-
-// 定义工具分类
-interface ToolCategory {
-  name: string;
-  icon: string;
-  tools: Array<{
-    id: ToolType;
-    name: string;
-    description: string;
-  }>;
-}
-
-const toolCategories: ToolCategory[] = [
-  {
-    name: 'JSON工具',
-    icon: 'json',
-    tools: [
-      { id: 'json', name: 'JSON格式化', description: 'JSON数据格式化和验证' }
-    ]
-  },
-  {
-    name: 'LLM查看',
-    icon: 'book',
-    tools: [
-      { id: 'jsonl-viewer', name: 'JSONL查看器', description: '逐行查看JSONL文件内容' },
-      { id: 'impl-viewer', name: 'IMPL查看器', description: '解析IMPL_JSON代码实现方案' },
-      { id: 'sse-viewer', name: 'SSE查看器', description: '拼接SSE流式响应为可读格式' }
-    ]
-  },
-  {
-    name: '文本与编码',
-    icon: 'diff',
-    tools: [
-      { id: 'diff', name: '文本差异对比', description: '比较两个文本的差异' },
-      { id: 'byte-converter', name: '字节转换', description: '不同字节单位之间的转换' },
-      { id: 'base64', name: 'Base64压缩编码', description: '文本压缩并Base64编码' },
-      { id: 'url-encoder', name: 'URL编解码', description: 'URL编码和解码' },
-      { id: 'regex', name: '正则测试', description: '正则表达式实时匹配与捕获组' }
-    ]
-  },
-  {
-    name: '网络与请求',
-    icon: 'url',
-    tools: [
-      { id: 'qr', name: 'URL转二维码', description: '生成二维码' },
-      { id: 'curl-builder', name: 'cURL构建器', description: '根据URL/Params/Headers生成cURL命令' },
-      { id: 'jwt', name: 'JWT解码', description: '解码JWT的Header与Payload' }
-    ]
-  },
-  {
-    name: 'R2存储',
-    icon: 'cloud',
-    tools: [
-      { id: 'r2-manager', name: 'R2文件管理', description: 'Cloudflare R2存储文件管理' },
-      { id: 'r2-image-manager', name: 'R2图片管理', description: 'Cloudflare R2图片存储管理' },
-      { id: 'markdown-viewer', name: 'Markdown预览', description: 'Markdown在线预览与管理' },
-      { id: 'notes', name: '云端备忘录', description: '支持Markdown的云端备忘录' },
-      { id: 'drawio', name: '在线画图', description: '使用draw.io编辑并云端保存图表' }
-    ]
-  },
-  {
-    name: '开发辅助',
-    icon: 'activity',
-    tools: [
-      { id: 'performance', name: '性能分析器', description: '上传数据生成甘特图进行性能分析' },
-      { id: 'timestamp', name: '时间戳转换', description: 'Unix时间戳与日期互转' },
-      { id: 'uuid', name: 'UUID生成器', description: '批量生成UUID/ULID' }
-    ]
-  }
-];
-
-// 工具ID到URL路径的映射
-const toolIdToPath: Record<ToolType, string> = {
-  'json': 'json',
-  'diff': 'diff',
-  'qr': 'qr',
-  'url-encoder': 'url-encoder',
-  'byte-converter': 'byte-converter',
-  'base64': 'base64',
-  'r2-manager': 'r2-manager',
-  'markdown-viewer': 'markdown-viewer',
-  'r2-image-manager': 'r2-image-manager',
-  'notes': 'notes',
-  'drawio': 'drawio',
-  'performance': 'performance',
-  'jsonl-viewer': 'jsonl-viewer',
-  'impl-viewer': 'impl-viewer',
-  'sse-viewer': 'sse-viewer',
-  'curl-builder': 'curl-builder',
-  'regex': 'regex',
-  'timestamp': 'timestamp',
-  'uuid': 'uuid',
-  'jwt': 'jwt'
-};
-
-// URL路径到工具ID的映射
-const pathToToolId: Record<string, ToolType> = {
-  'json': 'json',
-  'diff': 'diff',
-  'qr': 'qr',
-  'url-encoder': 'url-encoder',
-  'byte-converter': 'byte-converter',
-  'base64': 'base64',
-  'r2-manager': 'r2-manager',
-  'markdown-viewer': 'markdown-viewer',
-  'r2-image-manager': 'r2-image-manager',
-  'notes': 'notes',
-  'drawio': 'drawio',
-  'performance': 'performance',
-  'jsonl-viewer': 'jsonl-viewer',
-  'impl-viewer': 'impl-viewer',
-  'sse-viewer': 'sse-viewer',
-  'curl-builder': 'curl-builder',
-  'regex': 'regex',
-  'timestamp': 'timestamp',
-  'uuid': 'uuid',
-  'jwt': 'jwt'
-};
+import JsonWorkspace from './components/json/JsonWorkspace';
+import DiffViewer from './components/text/DiffViewer';
+import QrCodeGenerator from './components/network/QrCodeGenerator';
+import UrlEncoder from './components/text/UrlEncoder';
+import ByteConverter from './components/text/ByteConverter';
+import Base64Encoder from './components/text/Base64Encoder';
+import R2FileManager from './components/storage/R2FileManager';
+import MarkdownViewer from './components/storage/MarkdownViewer';
+import R2ImageManager from './components/storage/R2ImageManager';
+import NotesManager from './components/storage/NotesManager';
+import DrawioManager from './components/storage/DrawioManager';
+import PerformanceProfiler from './components/developer/PerformanceProfiler';
+import JsonlViewer from './components/llm/JsonlViewer';
+import ImplViewer from './components/llm/ImplViewer';
+import SseViewer from './components/llm/SseViewer';
+import CurlBuilder from './components/network/CurlBuilder';
+import RegexTester from './components/text/RegexTester';
+import TimestampConverter from './components/developer/TimestampConverter';
+import UuidGenerator from './components/developer/UuidGenerator';
+import JwtDecoder from './components/network/JwtDecoder';
+import Icon from './components/common/Icon';
+import SettingsDialog from './components/common/SettingsDialog';
 
 function App() {
-  const [activeTool, setActiveTool] = useState<ToolType>('json');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const requestedTool = pathToToolId[location.pathname.slice(1)] || 'json';
+  const [activeTool, setActiveTool] = useState<ToolType>(requestedTool);
+  const jsonGuard = useRef<(() => Promise<boolean>) | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (requestedTool !== activeTool) void (async () => {
+      const allowed = activeTool !== 'json' || !jsonGuard.current || await jsonGuard.current();
+      if (cancelled) return;
+      if (allowed) setActiveTool(requestedTool);
+      else navigate('/' + toolIdToPath[activeTool], { replace: true });
+    })();
+    return () => { cancelled = true; };
+  }, [requestedTool, activeTool, navigate]);
   const [activeCategory, setActiveCategory] = useState<string>('JSON工具');
   const [showDropdown, setShowDropdown] = useState<string[]>([]);
   const [layoutMode, setLayoutMode] = useState<'top' | 'left'>(() => {
@@ -173,25 +69,6 @@ function App() {
     localStorage.setItem('layoutMode', layoutMode);
   }, [layoutMode]);
 
-  // 页面加载时解析URL路径
-  useEffect(() => {
-    const path = window.location.pathname.substring(1); // 去掉开头的 '/'
-
-    if (path && pathToToolId[path]) {
-      const toolId = pathToToolId[path];
-      setActiveTool(toolId);
-
-      // 设置对应的分类
-      for (const category of toolCategories) {
-        const tool = category.tools.find(t => t.id === toolId);
-        if (tool) {
-          setActiveCategory(category.name);
-          break;
-        }
-      }
-    }
-  }, []);
-
   // 监听布局变化，处理菜单展开状态
   useEffect(() => {
     if (layoutMode === 'top') {
@@ -215,7 +92,7 @@ function App() {
   // 更新URL路径
   const updateUrl = (toolId: ToolType) => {
     const path = toolIdToPath[toolId];
-    window.history.replaceState({}, '', `/${path}`);
+    navigate('/' + path);
   };
 
   const handleCategoryClick = (categoryName: string) => {
@@ -255,7 +132,6 @@ function App() {
   };
 
   const handleToolSelect = (toolId: ToolType) => {
-    setActiveTool(toolId);
     // 在顶部布局下，选择工具后关闭下拉菜单；左侧布局保持不变
     if (layoutMode === 'top') {
       setShowDropdown([]);
@@ -337,9 +213,9 @@ function App() {
           </div>
         </div>
       </header>
-      <main className="App-main">
+      <main className={`App-main${activeTool === 'json' ? ' App-main--json' : ''}`}>
         <div className="main-container">
-          {activeTool === 'json' && <JsonFormatter />}
+          {activeTool === 'json' && <JsonWorkspace darkMode={darkMode} registerGuard={guard => { jsonGuard.current = guard; }} />}
           {activeTool === 'diff' && <DiffViewer />}
           {activeTool === 'qr' && <QrCodeGenerator />}
           {activeTool === 'url-encoder' && <UrlEncoder />}

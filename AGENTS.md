@@ -1,6 +1,8 @@
+> 部署约定：Cloudflare Workers 统一部署。Vite Cloudflare 插件构建 dist/client 与 dist/worker；npm run deploy 使用生成的 dist/worker/wrangler.json。同源 /api，SPA fallback 由 Wrangler assets 配置负责。详情见 docs/CLOUDFLARE_R2_SETUP.md。
+
 # AGENTS.md
 
-面向 AI 编码代理（以及人类协作者）的前端开发规范。本仓库是一个纯前端的 React 工具集合应用，部署在 Cloudflare Pages，后端为独立的 Cloudflare Worker（R2 网关）。
+面向 AI 编码代理（以及人类协作者）的前端开发规范。本仓库是一个 React 工具集合应用，前端静态资源与 Hono/R2 网关通过 Cloudflare Workers 统一部署。
 
 > **权威参考**：`README.md` 是 CRA 时期的遗留文档，**已过时，不要依据它**。架构与约定以本文件、`frame.md`、`package.json` 中的实际脚本为准。
 
@@ -10,46 +12,54 @@
 
 | 类别 | 选型 |
 |------|------|
-| 框架 | React 19（新 JSX 转换，**无需 `import React`**）+ TypeScript 5.9（strict） |
+| 框架 | React 19（新 JSX 转换，**无需 `import React`**）+ TypeScript 6（strict） |
 | 构建 | Vite 8 + `@vitejs/plugin-react` |
 | 代码编辑器 | `monaco-editor` + `@monaco-editor/react`（**本地打包，禁止走 CDN**） |
 | Markdown | `react-markdown` + `remark-gfm` + `rehype-highlight` |
 | Diff | `diff` + `react-diff-view` |
 | 其它 | `qrcode.react`、`highlight.js`、`pako`/`snappyjs`（压缩）、`jsonpath`、`html2canvas` |
 | 状态管理 | 无 Redux/Zustand/Context，组件内 `useState` 自治；`App.tsx` 仅持有 UI 偏好 |
-| 路由 | 手写（基于 `window.history`），**不使用 react-router** |
+| 路由 | React Router（入口 BrowserRouter，App 使用 useLocation/useNavigate） |
 | 样式 | 原生全局 CSS + CSS 变量主题，无 CSS Modules / Tailwind / styled-components |
-| 测试 | 当前无测试框架；如需新增建议用 Vitest |
+| 测试 | Vitest + Testing Library + jsdom；测试与被测模块同目录 |
 
 ---
 
 ## 2. 目录结构
 
-```
+```text
 react-tools/
 ├── src/
-│   ├── index.tsx              # 入口：StrictMode + createRoot；必须最先 import './lib/monaco'
-│   ├── index.css              # 仅做 reset
-│   ├── App.tsx                # 唯一状态中枢：导航注册表 + 客户端路由 + 主题 + 布局
-│   ├── App.css                # 全局样式与 CSS 变量主题系统（单体大文件）
-│   ├── lib/                   # 共享非 UI 模块
-│   │   ├── types.ts           # Config、FileItem 等跨组件共享类型
-│   │   ├── storage.ts         # STORAGE_KEYS 常量 + 安全读写函数
-│   │   ├── r2Api.ts           # callWorkerApi / uploadWithProgress（Worker 网关）
-│   │   └── monaco.ts          # Monaco 本地打包 + Web Worker 配置
-│   ├── types/                 # 第三方库的 ambient 声明（如 snappyjs.d.ts）
-│   └── components/            # 全部工具组件（PascalCase .tsx，default 导出）
-├── public/                    # 原样拷贝到构建产物（含 _redirects、sitemap、manifest）
-├── docs/
-│   ├── worker.js              # 独立部署的 Cloudflare Worker 后端（R2 代理）
-│   └── CLOUDFLARE_R2_SETUP.md
-├── frame.md                   # 中文架构文档（权威）
-├── vite.config.ts
-├── tsconfig.json              # strict + noUnusedLocals/Parameters + composite
-└── package.json               # "type": "module"，脚本 dev/build/preview
+│   ├── index.tsx / index.css  # 入口、Monaco 初始化、基础 reset
+│   ├── App.tsx / App.css      # 应用框架、导航、主题及全局样式
+│   ├── app/tools.ts          # 工具分类、ToolType 与路由映射
+│   ├── components/
+│   │   ├── common/           # Icon、MessageToast、SettingsDialog
+│   │   ├── json/             # JSON 工作区、文件树、编辑器、面包屑
+│   │   ├── llm/              # JSONL、IMPL、SSE 查看器
+│   │   ├── text/             # Diff、Base64、字节、URL 编解码、正则
+│   │   ├── network/          # cURL、JWT、二维码
+│   │   ├── storage/          # R2 文件/图片、Markdown、笔记、Drawio
+│   │   └── developer/        # 性能分析及甘特图、时间戳、UUID
+│   ├── lib/
+│   │   ├── json/             # IndexedDB、自动保存 hook、结构解析及 worker
+│   │   ├── performance/      # 性能分析示例数据
+│   │   └── *.ts              # 跨功能共享：monaco、storage、r2Api、types
+│   ├── types/                # 第三方 ambient 类型声明
+│   └── setupTests.ts         # Vitest 测试初始化
+├── worker/
+│   ├── index.ts              # Hono 入口，同源 /api 路由
+│   └── services/storage.js   # R2 存储代理
+├── public/                   # 静态资源
+├── shared/ / data/           # 现有 JSON 样例文件
+├── docs/                     # 部署说明、设计与实施方案
+├── frame.md                  # 架构说明
+├── vite.config.ts / vitest.config.ts
+├── wrangler.jsonc            # Workers 统一部署配置
+└── package.json              # dev/build/test:run/deploy 等脚本
 ```
 
-注意：**没有** `pages/`、`hooks/`、`utils/`、`services/` 目录，结构是扁平的。共享逻辑统一放 `src/lib/`。
+组件按导航功能分类，跨工具 UI 放 `components/common/`；非 UI 逻辑放 `lib/`，领域专用逻辑放其子目录。`*.test.ts(x)` 与被测文件同目录，专用 CSS 与组件同目录。新增文件优先放入已有分类，不再堆放在 components 根目录。
 
 ---
 
@@ -61,7 +71,7 @@ npm run build     # tsc -b 类型检查 → vite build（类型错误会阻断�
 npm run preview   # 预览构建产物
 ```
 
-构建产物输出到 `build/`（刻意保留 CRA 的目录名，避免改动 Cloudflare Pages 配置）。
+构建产物输出到 `dist/client` 和 `dist/worker`；`npm run test:run` 运行测试，`npm run deploy` 构建并统一部署。
 
 ---
 
@@ -116,9 +126,9 @@ npm run preview   # 预览构建产物
 
 ### 4.7 路由与新增工具
 
-- 客户端路由手写在 `App.tsx`（`toolIdToPath` / `pathToToolId`），用 `window.history.replaceState` 同步 URL。
-- **新增一个工具需要改 `App.tsx` 五处**：`ToolType` 联合类型、`toolCategories`、`toolIdToPath`、`pathToToolId`、条件渲染块。
-- SPA 深链靠 `public/_redirects`（`/* /index.html 200`）兜底。
+- 工具定义及路由映射集中在 `src/app/tools.ts`，`App.tsx` 通过 React Router 切换页面。
+- 新增工具时更新 `tools.ts` 中的类型、分类与路径映射，并在 `App.tsx` 导入和渲染对应分类下的组件。
+- SPA 深链由 Wrangler assets 的 single-page-application 配置兜底。
 
 ---
 
@@ -151,7 +161,7 @@ npm run preview   # 预览构建产物
 
 ## 6. 后端说明（前端无需改动，但需知晓）
 
-- R2 后端是 `docs/worker.js`，**独立部署**，提交信息中的 `fix(worker)` 指向该文件。
+- R2 后端实现在 `worker/services/storage.js`，由 `worker/index.ts` 挂载到同源 `/api`，与静态资源统一部署。
 - 文件上传有「key 前缀」处理，曾因前缀白名单导致上传失败（修复见 `d1fb4a2`）。
 
 ---
@@ -180,7 +190,7 @@ build: migrate from CRA to Vite and upgrade all deps to latest
 ## 8. 改动前的检查清单
 
 - [ ] 新增 localStorage key → 已加入 `STORAGE_KEYS`
-- [ ] 新增工具组件 → 已在 `App.tsx` 五处注册
+- [ ] 新增工具组件 → 已更新 `app/tools.ts` 与 `App.tsx` 的渲染入口
 - [ ] 类型变更 → `npm run build` 通过 `tsc -b` 类型检查
 - [ ] 引入第三方库 → 补齐类型声明，避免破坏 `strict` 模式
 - [ ] 涉及 Monaco → 保持本地打包，不要切回 CDN

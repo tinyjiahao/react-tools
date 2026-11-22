@@ -1,0 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
+interface Props { title: string; initial: string; folders?: { id: string; name: string }[]; message?: string; onSubmit: (value: string) => Promise<void>; onClose: () => void }
+const JsonWorkspaceDialog = ({ title, initial, folders, message, onSubmit, onClose }: Props) => {
+  const ref = useRef<HTMLDialogElement>(null); const [value, setValue] = useState(initial); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { const previous = document.activeElement as HTMLElement; ref.current?.showModal(); return () => previous?.focus(); }, []);
+  return <dialog ref={ref} className="jw-dialog" onCancel={e => { if (busy) e.preventDefault(); else onClose(); }}><form onSubmit={async e => { e.preventDefault(); setBusy(true); try { await onSubmit(value); onClose(); } catch (err) { setError((err as Error).message); } finally { setBusy(false); } }}><h3>{title}</h3>{message ? <p>{message}</p> : <label>{folders ? '目标文件夹' : '名称'}{folders ? <select value={value} onChange={e => setValue(e.target.value)}>{folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select> : <input autoFocus value={value} maxLength={100} onFocus={e => e.target.select()} onChange={e => setValue(e.target.value)} />}</label>}{error && <p role="alert">{error}</p>}<div className="jw-actions"><button type="button" className="btn btn-secondary" disabled={busy} onClick={onClose}>取消</button><button className="btn btn-primary" disabled={busy}>{busy ? '处理中…' : '确定'}</button></div></form></dialog>;
+};
+export default JsonWorkspaceDialog;
