@@ -16,5 +16,12 @@
       "bucket_name": "react-tools"
     }
   ],
-  "upload_source_maps": true
+  "upload_source_maps": true,
+  "routes": [
+    {
+      "pattern": "tool.searchdiff.com",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": true
 }
