@@ -146,7 +146,7 @@ function App() {
           <div className="header-left">
             <div className="logo" style={{ marginRight: '20px' }}>
               <Icon name="logo" size={32} className="logo-icon" />
-              <span className="logo-text">Tools</span>
+              <span className="logo-text">Tool Suit</span>
             </div>
             <nav className="main-navigation">
               {toolCategories.map((category) => (

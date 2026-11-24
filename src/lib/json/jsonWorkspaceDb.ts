@@ -1,6 +1,7 @@
+export interface JsonFileProperty { id: string; key: string; value: string }
 export interface WorkspaceNode { id: string; parentId: string; kind: 'folder' | 'json'; name: string; createdAt: number; updatedAt: number }
-export interface WorkspaceDocument { nodeId: string; text: string; jsonPath: string; revision: number; updatedAt: number }
-export interface WorkspaceBackup { format: 'react-tools-json'; schemaVersion: 1; exportedAt: number; nodes: WorkspaceNode[]; documents: WorkspaceDocument[] }
+export interface WorkspaceDocument { nodeId: string; properties?: JsonFileProperty[]; text: string; jsonPath: string; revision: number; updatedAt: number }
+export interface WorkspaceBackup { format: 'react-tools-json'; schemaVersion: 1 | 2; exportedAt: number; nodes: WorkspaceNode[]; documents: WorkspaceDocument[] }
 const MAX_BYTES = 5 * 1024 * 1024;
 let connection: Promise<IDBDatabase> | undefined;
 function request<T>(r: IDBRequest<T>): Promise<T> { return new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); }
@@ -38,25 +39,36 @@ export function validateWorkspace(nodes: WorkspaceNode[], documents: WorkspaceDo
   const ids = new Set<string>();
   for (const d of documents) {
     if (!d || ids.has(d.nodeId) || map.get(d.nodeId)?.kind !== 'json' || typeof d.text !== 'string' || typeof d.jsonPath !== 'string' || !Number.isSafeInteger(d.revision) || d.revision < 1 || !Number.isFinite(d.updatedAt)) throw new Error('正文记录格式错误');
-    if (new TextEncoder().encode(d.text).length > MAX_BYTES || d.jsonPath.length > 10000) throw new Error('单文档最多 5 MiB，查询表达式最多 10000 字符'); ids.add(d.nodeId);
+    validateDocumentContent(d); ids.add(d.nodeId);
   }
   if (nodes.filter(n => n.kind === 'json').length !== ids.size) throw new Error('正文记录缺失');
 }
 export function listNodes() { return transaction('readonly', n => request<WorkspaceNode[]>(n.getAll())); }
-export function readDocument(id: string) { return transaction('readonly', (_n, d) => request<WorkspaceDocument | undefined>(d.get(id))); }
-export function exportWorkspace(): Promise<WorkspaceBackup> { return transaction('readonly', async (n, d) => ({ format: 'react-tools-json', schemaVersion: 1, exportedAt: Date.now(), nodes: await request(n.getAll()), documents: await request(d.getAll()) })); }
+export function readDocument(id: string) { return transaction('readonly', async (_n, d) => { const value = await request<WorkspaceDocument | undefined>(d.get(id)); return value ? { ...value, properties: value.properties ?? [] } : undefined; }); }
+export function exportWorkspace(): Promise<WorkspaceBackup> { return transaction('readonly', async (n, d) => ({ format: 'react-tools-json', schemaVersion: 2, exportedAt: Date.now(), nodes: await request(n.getAll()), documents: await request(d.getAll()) })); }
 async function mutate(run: (nodes: WorkspaceNode[], docs: WorkspaceDocument[]) => void) {
   await transaction('readwrite', async (n, d) => { const nodes = await request<WorkspaceNode[]>(n.getAll()); const docs = await request<WorkspaceDocument[]>(d.getAll()); run(nodes, docs); validateWorkspace(nodes, docs); await request(n.clear()); await request(d.clear()); for (const node of nodes) n.put(node); for (const doc of docs) d.put(doc); });
 }
-export async function createNode(kind: WorkspaceNode['kind'], parentId: string, name: string, text = '{}') {
-  const id = crypto.randomUUID(); await mutate((nodes, docs) => { name = normalizeName(name, kind); const base = name; let i = 1; while (nodes.some(n => n.parentId === parentId && n.name === name)) name = kind === 'json' ? `${base.slice(0, -5)} (${i++}).json` : `${base} (${i++})`; nodes.push({ id, kind, parentId, name, createdAt: Date.now(), updatedAt: Date.now() }); if (kind === 'json') docs.push({ nodeId: id, text, jsonPath: '', revision: 1, updatedAt: Date.now() }); }); return id;
+export async function createNode(kind: WorkspaceNode['kind'], parentId: string, name: string, text = '{}', properties: JsonFileProperty[] = []) {
+  const id = crypto.randomUUID(); await mutate((nodes, docs) => { name = normalizeName(name, kind); const base = name; let i = 1; while (nodes.some(n => n.parentId === parentId && n.name === name)) name = kind === 'json' ? `${base.slice(0, -5)} (${i++}).json` : `${base} (${i++})`; nodes.push({ id, kind, parentId, name, createdAt: Date.now(), updatedAt: Date.now() }); if (kind === 'json') docs.push({ nodeId: id, properties, text, jsonPath: '', revision: 1, updatedAt: Date.now() }); }); return id;
 }
 export async function changeNode(id: string, changes: { name?: string; parentId?: string }) { await mutate(nodes => { const n = nodes.find(n => n.id === id); if (!n) throw new Error('节点已删除'); if (changes.name !== undefined) n.name = normalizeName(changes.name, n.kind); if (changes.parentId !== undefined) n.parentId = changes.parentId; n.updatedAt = Date.now(); }); }
 export function descendants(nodes: WorkspaceNode[], id: string) { const ids = new Set([id]); let size; do { size = ids.size; for (const n of nodes) if (ids.has(n.parentId)) ids.add(n.id); } while (size !== ids.size); return ids; }
 export async function deleteNode(id: string) { await mutate((nodes, docs) => { const ids = descendants(nodes, id); for (let i = nodes.length - 1; i >= 0; i--) if (ids.has(nodes[i].id)) nodes.splice(i, 1); for (let i = docs.length - 1; i >= 0; i--) if (ids.has(docs[i].nodeId)) docs.splice(i, 1); }); }
-export function saveDocument(doc: WorkspaceDocument) { return transaction('readwrite', async (n, d) => { const node = await request(n.get(doc.nodeId)); const previous = await request<WorkspaceDocument | undefined>(d.get(doc.nodeId)); if (!node || !previous || previous.revision !== doc.revision) throw new Error('存在冲突：文件已被其他标签页修改或删除，请加载本地库版本或另存副本'); if (new TextEncoder().encode(doc.text).length > MAX_BYTES || doc.jsonPath.length > 10000) throw new Error('单文档最多 5 MiB，查询表达式最多 10000 字符'); const saved = { ...doc, revision: doc.revision + 1, updatedAt: Date.now() }; d.put(saved); n.put({ ...node, updatedAt: saved.updatedAt }); return saved; }); }
+export function saveDocument(doc: WorkspaceDocument) { return transaction('readwrite', async (n, d) => { const node = await request(n.get(doc.nodeId)); const previous = await request<WorkspaceDocument | undefined>(d.get(doc.nodeId)); if (!node || !previous || previous.revision !== doc.revision) throw new Error('存在冲突：文件已被其他标签页修改或删除，请加载本地库版本或另存副本'); validateDocumentContent(doc); const saved = { ...doc, revision: doc.revision + 1, updatedAt: Date.now() }; d.put(saved); n.put({ ...node, updatedAt: saved.updatedAt }); return saved; }); }
 export async function importWorkspace(value: unknown) {
-  const b = value as WorkspaceBackup; if (!b || b.format !== 'react-tools-json' || b.schemaVersion !== 1 || !Array.isArray(b.nodes) || !Array.isArray(b.documents)) throw new Error('不支持的备份格式'); validateWorkspace(b.nodes, b.documents);
+  const b = value as WorkspaceBackup; if (!b || b.format !== 'react-tools-json' || ![1, 2].includes(b.schemaVersion) || !Array.isArray(b.nodes) || !Array.isArray(b.documents)) throw new Error('不支持的备份格式'); validateWorkspace(b.nodes, b.documents);
   await mutate((nodes, docs) => { const folderId = crypto.randomUUID(); let name = '导入备份'; let i = 1; while (nodes.some(n => n.parentId === 'root' && n.name === name)) name = `导入备份 (${i++})`; nodes.push({ id: folderId, parentId: 'root', kind: 'folder', name, createdAt: Date.now(), updatedAt: Date.now() }); const ids = new Map(b.nodes.map(n => [n.id, crypto.randomUUID()])); for (const n of b.nodes) nodes.push({ ...n, id: ids.get(n.id)!, parentId: n.parentId === 'root' ? folderId : ids.get(n.parentId)! }); for (const d of b.documents) docs.push({ ...d, nodeId: ids.get(d.nodeId)!, revision: 1 }); });
 }
 export function downloadJson(name: string, text: string) { const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+
+function validateDocumentContent(doc: WorkspaceDocument) {
+  const properties = doc.properties === undefined ? [] : doc.properties;
+  if (!Array.isArray(properties) || properties.some(p => !p || typeof p.id !== 'string' || !p.id || typeof p.key !== 'string' || typeof p.value !== 'string') || new Set(properties.map(p => p.id)).size !== properties.length) throw new Error('文件属性格式错误');
+  if (new TextEncoder().encode(doc.text + JSON.stringify(properties)).length > MAX_BYTES || doc.jsonPath.length > 10000) throw new Error('正文与属性合计最多 5 MiB，查询表达式最多 10000 字符');
+}
+export function downloadRecovery(doc: WorkspaceDocument, name: string) {
+  const now = Date.now();
+  const backup: WorkspaceBackup = { format: 'react-tools-json', schemaVersion: 2, exportedAt: now, nodes: [{ id: doc.nodeId, name: normalizeName(name, 'json'), kind: 'json', parentId: 'root', createdAt: now, updatedAt: now }], documents: [doc] };
+  downloadJson(name + '.backup.json', JSON.stringify(backup, null, 2));
+}

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { listNodes, readDocument, saveDocument } from './jsonWorkspaceDb';
-import type { WorkspaceDocument, WorkspaceNode } from './jsonWorkspaceDb';
+import type { JsonFileProperty, WorkspaceDocument, WorkspaceNode } from './jsonWorkspaceDb';
 import { safeGetJSON, safeSetItem, STORAGE_KEYS } from '../storage';
-interface Preferences { selectedId: string; expandedIds: string[]; sidebarCollapsed: boolean; isMinified: boolean }
+interface Preferences { sidebarWidth: number; selectedId: string; expandedIds: string[]; sidebarCollapsed: boolean; isMinified: boolean }
 export function useJsonWorkspace() {
-  const [preferences, setPreferences] = useState<Preferences>(() => { const p = safeGetJSON<Partial<Preferences>>(STORAGE_KEYS.jsonWorkspacePreferences, {}) || {}; return { selectedId: typeof p.selectedId === 'string' ? p.selectedId : '', expandedIds: Array.isArray(p.expandedIds) ? p.expandedIds.filter(x => typeof x === 'string') : [], sidebarCollapsed: p.sidebarCollapsed === true, isMinified: p.isMinified === true }; });
+  const [preferences, setPreferences] = useState<Preferences>(() => { const p = safeGetJSON<Partial<Preferences>>(STORAGE_KEYS.jsonWorkspacePreferences, {}) || {}; return { sidebarWidth: typeof p.sidebarWidth === 'number' && Number.isFinite(p.sidebarWidth) ? Math.max(200, Math.min(480, p.sidebarWidth)) : 240, selectedId: typeof p.selectedId === 'string' ? p.selectedId : '', expandedIds: Array.isArray(p.expandedIds) ? p.expandedIds.filter(x => typeof x === 'string') : [], sidebarCollapsed: p.sidebarCollapsed === true, isMinified: p.isMinified === true }; });
   const [loadVersion, setLoadVersion] = useState(0);
   const [nodes, setNodes] = useState<WorkspaceNode[]>([]); const [doc, setDoc] = useState<WorkspaceDocument>(); const [status, setStatus] = useState('加载中'); const [problem, setProblem] = useState(''); const [busy, setBusy] = useState(true); const [temporary, setTemporary] = useState(false);
   const current = useRef<WorkspaceDocument | undefined>(undefined); const dirty = useRef(false); const sequence = useRef(0); const saving = useRef<Promise<boolean> | null>(null); const loadSequence = useRef(0); const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined); const channel = useRef<BroadcastChannel | null>(null); const alive = useRef(true);
@@ -22,8 +22,10 @@ export function useJsonWorkspace() {
     })();
     try { return await saving.current; } finally { saving.current = null; }
   }
-  function edit(text: string, jsonPath: string) { if (!current.current) return; current.current = { ...current.current, text, jsonPath }; sequence.current++; dirty.current = true; setDoc(current.current); setStatus(temporary ? '临时编辑，刷新会丢失' : '已修改'); clearTimeout(timer.current); timer.current = setTimeout(() => { void flush(); }, 500); }
-  async function select(id: string) { const ticket = ++loadSequence.current; setBusy(true); try { if (!await flush() || ticket !== loadSequence.current) return; const value = await readDocument(id); if (ticket === loadSequence.current) install(value); } catch (e) { setProblem((e as Error).message); } finally { if (ticket === loadSequence.current) setBusy(false); } }
+  function update(changes: Partial<Pick<WorkspaceDocument, 'text' | 'jsonPath' | 'properties'>>) { if (!current.current) return; current.current = { ...current.current, ...changes }; sequence.current++; dirty.current = true; setDoc(current.current); setStatus(temporary ? '临时编辑，刷新会丢失' : '已修改'); clearTimeout(timer.current); timer.current = setTimeout(() => { void flush(); }, 500); }
+  function edit(text: string, jsonPath: string) { update({ text, jsonPath }); }
+  function editProperties(properties: JsonFileProperty[]) { update({ properties }); }
+  async function select(id: string) { const ticket = ++loadSequence.current; setBusy(true); try { if (!await flush() || ticket !== loadSequence.current) return false; const value = await readDocument(id); if (ticket === loadSequence.current) { install(value); return true; } return false; } catch (e) { setProblem((e as Error).message); return false; } finally { if (ticket === loadSequence.current) setBusy(false); } }
   async function reload() { if (dirty.current && !window.confirm('放弃当前未保存草稿并加载本地库版本？建议先下载草稿。')) return; const value = current.current ? await readDocument(current.current.nodeId) : undefined; install(value); await refresh(); }
   useEffect(() => { safeSetItem(STORAGE_KEYS.jsonWorkspacePreferences, JSON.stringify(preferences)); }, [preferences]);
   useEffect(() => {
@@ -49,5 +51,5 @@ export function useJsonWorkspace() {
     c.onmessage = () => { void (async () => { try { await refresh(); const active = current.current; if (!active) return; const latest = await readDocument(active.nodeId); if (current.current?.nodeId !== active.nodeId) return; if (latest?.revision === active.revision) return; if (dirty.current) { setStatus('存在冲突'); setProblem('其他标签页已修改或删除当前文件，请加载本地库版本或另存副本'); } else install(latest); } catch (e) { setProblem((e as Error).message); } })(); };
     return () => { c.close(); channel.current = null; };
   }, []);
-  return { nodes, doc, loadVersion, status, problem, setProblem, preferences, setPreferences, busy, temporary, refresh, select, reload, flush, edit, publish, install };
+  return { nodes, doc, loadVersion, status, problem, setProblem, preferences, setPreferences, busy, temporary, refresh, select, reload, flush, edit, editProperties, publish, install };
 }

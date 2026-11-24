@@ -9,6 +9,8 @@ import JsonBreadcrumbs from './JsonBreadcrumbs';
 
 const viewStates = new Map<string, editor.ICodeEditorViewState>();
 interface JsonFormatterProps {
+  propertiesOpen?: boolean;
+  onPropertiesToggle?: () => void;
   darkMode?: boolean;
   name?: string;
   document: WorkspaceDocument;
@@ -17,7 +19,7 @@ interface JsonFormatterProps {
   minified: boolean;
   onMinifiedChange: (value: boolean) => void;
 }
-const JsonFormatter = ({ darkMode = false, name = 'JSON 文档', document: doc, disabled, onEdit, minified, onMinifiedChange }: JsonFormatterProps) => {
+const JsonFormatter = ({ propertiesOpen, onPropertiesToggle, darkMode = false, name = 'JSON 文档', document: doc, disabled, onEdit, minified, onMinifiedChange }: JsonFormatterProps) => {
   const [instance, setInstance] = useState<editor.IStandaloneCodeEditor | null>(null);
   const [error, setError] = useState('');
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -70,6 +72,7 @@ const JsonFormatter = ({ darkMode = false, name = 'JSON 文档', document: doc, 
             <button className="btn-icon" title="搜索替换" aria-label="搜索替换" disabled={disabled || !instance} onClick={openFindReplace}><Icon name="search" size={18} /></button>
             <button className="btn-icon" title="复制到剪贴板" disabled={disabled || !text} onClick={() => void copy()}><Icon name="copy" size={18} /></button>
             <span className="char-count">{text.length} 字符</span>
+            <button className="btn-icon jw-properties-toggle" title="文件属性" aria-label="属性" aria-expanded={!!propertiesOpen} aria-controls="json-file-properties" disabled={disabled} onClick={onPropertiesToggle}><Icon name="properties" size={18} /></button>
           </div>
         </div>
         <JsonBreadcrumbs instance={instance} name={name} />

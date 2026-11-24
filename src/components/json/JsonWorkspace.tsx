@@ -1,15 +1,33 @@
+import type { CSSProperties } from 'react';
+import JsonWorkspaceSplitter from './JsonWorkspaceSplitter';
+import JsonFilePropertiesDrawer from './JsonFilePropertiesDrawer';
 import { useEffect, useRef, useState } from 'react';
 import JsonFormatter from './JsonFormatter';
 import JsonFileTree from './JsonFileTree';
 import JsonWorkspaceDialog from './JsonWorkspaceDialog';
 import { useJsonWorkspace } from '../../lib/json/useJsonWorkspace';
-import { createNode, changeNode, deleteNode, descendants, downloadJson } from '../../lib/json/jsonWorkspaceDb';
+import { createNode, changeNode, deleteNode, descendants, downloadJson, downloadRecovery } from '../../lib/json/jsonWorkspaceDb';
 import type { WorkspaceNode } from '../../lib/json/jsonWorkspaceDb';
 interface Props { darkMode: boolean; registerGuard: (guard: (() => Promise<boolean>) | null) => void }
 interface DialogState { title: string; initial: string; folders?: { id: string; name: string }[]; message?: string; submit: (value: string) => Promise<void> }
 const JsonWorkspace = ({ darkMode, registerGuard }: Props) => {
   const w = useJsonWorkspace(); const [selected, setSelected] = useState(''); const [dialog, setDialog] = useState<DialogState>(); const files = useRef<HTMLInputElement>(null); const toggle = useRef<HTMLButtonElement>(null); const sidebar = useRef<HTMLElement>(null);
-  useEffect(() => { if (!w.preferences.sidebarCollapsed && window.matchMedia('(max-width: 700px)').matches) sidebar.current?.querySelector<HTMLElement>('button')?.focus(); }, [w.preferences.sidebarCollapsed]);
+  const container = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(1000);
+  const [narrow, setNarrow] = useState(window.innerWidth <= 700);
+  const [dragWidth, setDragWidth] = useState<number>();
+  const [propertiesOpen, setPropertiesOpen] = useState(false);
+  const maxWidth = Math.max(200, Math.min(480, containerWidth - 366));
+  const width = Math.min(maxWidth, dragWidth ?? w.preferences.sidebarWidth);
+  useEffect(() => {
+    function measure() { const value = container.current?.clientWidth ?? 1000; setContainerWidth(value); setNarrow(window.innerWidth <= 700 || value < 566); }
+    const observer = new ResizeObserver(measure); observer.observe(container.current!); window.addEventListener('resize', measure); measure();
+    return () => { observer.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+  useEffect(() => { if (!w.doc) setPropertiesOpen(false); }, [w.doc]);
+  useEffect(() => { if (narrow && propertiesOpen) w.setPreferences(p => ({ ...p, sidebarCollapsed: true })); }, [narrow, propertiesOpen]);
+  function closeProperties() { setPropertiesOpen(false); void w.flush(); container.current?.querySelector<HTMLButtonElement>('.jw-properties-toggle')?.focus(); }
+  useEffect(() => { if (!w.preferences.sidebarCollapsed && narrow) sidebar.current?.querySelector<HTMLElement>('button')?.focus(); }, [w.preferences.sidebarCollapsed, narrow]);
   useEffect(() => { registerGuard(w.flush); return () => registerGuard(null); });
   const active = w.nodes.find(n => n.id === (selected || w.doc?.nodeId)); const parentId = active?.kind === 'folder' ? active.id : active?.parentId || 'root';
   function path(id: string): string { const n = w.nodes.find(n => n.id === id); return n ? `${n.parentId === 'root' ? '' : path(n.parentId) + '/'}${n.name}` : ''; }
@@ -24,10 +42,10 @@ const JsonWorkspace = ({ darkMode, registerGuard }: Props) => {
     if (type === 'delete') setDialog({ title: '删除确认', initial: '', message: `删除“${node.name}”及其中 ${w.nodes.filter(n => ids.has(n.id) && n.kind === 'json').length} 个 JSON 文件？此操作不可撤销，请先备份。`, submit: async () => { await requireSave(); await deleteNode(node.id); const wasActive = w.doc && ids.has(w.doc.nodeId); const next = w.nodes.find(n => n.kind === 'json' && n.parentId === node.parentId && !ids.has(n.id)); if (wasActive) w.install(undefined); setSelected(''); await changed(); if (wasActive && next) await w.select(next.id); } });
   }
   function closeTree() { w.setPreferences(p => ({ ...p, sidebarCollapsed: true })); toggle.current?.focus(); }
-  return <div className={`jw-workspace ${w.preferences.sidebarCollapsed ? 'jw-collapsed' : ''}`}>
+  return <div ref={container} style={{ '--jw-sidebar-width': `${width}px` } as CSSProperties} className={`jw-workspace ${narrow ? 'jw-narrow' : ''} ${w.preferences.sidebarCollapsed ? 'jw-collapsed' : ''}`}>
     {!w.preferences.sidebarCollapsed && <button className="jw-backdrop" aria-label="关闭文件树" onClick={closeTree} />}
     <aside ref={sidebar} className="jw-sidebar" aria-label="JSON 文件管理" onKeyDown={e => {
-      if (!window.matchMedia('(max-width: 700px)').matches) return;
+      if (!narrow) return;
       if (e.key === 'Escape') closeTree();
       if (e.key === 'Tab') {
         const controls = [...(sidebar.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, summary, [tabindex="0"]') || [])].filter(el => el.getClientRects().length);
@@ -35,12 +53,14 @@ const JsonWorkspace = ({ darkMode, registerGuard }: Props) => {
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
       }
-    }}><div className="jw-sidebar-title"><strong>本地 JSON</strong></div><div className="jw-actions"><button disabled={w.temporary || w.busy} onClick={() => create('json')}>＋文件</button><button disabled={w.temporary || w.busy} onClick={() => create('folder')}>＋文件夹</button><button onClick={() => { setSelected('root'); }}>根目录</button></div>
-      <JsonFileTree nodes={w.nodes} selected={selected || w.doc?.nodeId || ''} expanded={w.preferences.expandedIds} onExpand={expandedIds => w.setPreferences(p => ({ ...p, expandedIds }))} onSelect={node => { setSelected(node.id); if (node.kind === 'json') { void w.select(node.id); if (window.matchMedia('(max-width: 700px)').matches) closeTree(); } }} onAction={action} />
+    }}><div className="jw-sidebar-title"><strong>JSON工具</strong></div><div className="jw-actions"><button disabled={w.temporary || w.busy} onClick={() => create('json')}>＋文件</button><button disabled={w.temporary || w.busy} onClick={() => create('folder')}>＋文件夹</button><button onClick={() => { setSelected('root'); }}>根目录</button></div>
+      <JsonFileTree layoutKey={`${width}:${w.preferences.sidebarCollapsed}:${narrow}`} nodes={w.nodes} selected={selected || w.doc?.nodeId || ''} expanded={w.preferences.expandedIds} onExpand={expandedIds => w.setPreferences(p => ({ ...p, expandedIds }))} onSelect={node => { if (node.kind === 'folder') setSelected(node.id); else void w.select(node.id).then(ok => { if (ok) { setSelected(node.id); if (narrow) closeTree(); } }); }} onAction={action} />
     </aside>
-    <section className="jw-main"><button ref={toggle} className="btn-icon jw-tree-toggle" onClick={() => w.setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed }))} aria-label="切换文件树" aria-expanded={!w.preferences.sidebarCollapsed}>☰</button>
-      {w.problem && <div className="jw-problem" role="alert"><span>{w.problem}</span>{w.doc && <button onClick={() => downloadJson(w.nodes.find(n => n.id === w.doc!.nodeId)?.name || '草稿.json', w.doc!.text)}>下载草稿</button>}<button onClick={() => void w.flush()}>重试保存</button><button onClick={() => void run(w.reload)}>加载本地库版本</button>{w.doc && !w.temporary && <button onClick={() => void run(async () => { const id = await createNode('json', 'root', '冲突副本.json', w.doc!.text); w.install(undefined); await changed(); await w.select(id); })}>另存副本</button>}</div>}
-      {w.doc ? <JsonFormatter key={`${w.doc.nodeId}:${w.loadVersion}`} darkMode={darkMode} name={w.nodes.find(n => n.id === w.doc!.nodeId)?.name || '临时草稿'} document={w.doc} disabled={w.busy} onEdit={w.edit} minified={w.preferences.isMinified} onMinifiedChange={isMinified => w.setPreferences(p => ({ ...p, isMinified }))} /> : <div className="jw-empty"><h3>创建你的 JSON 工作区</h3><p>用文件夹整理 JSON，编辑内容自动保存在本机。</p><div className="jw-actions"><button className="btn btn-primary" onClick={() => create('json')}>新建 JSON</button><button className="btn btn-secondary" onClick={() => files.current?.click()}>导入 JSON</button></div></div>}
+    {!narrow && !w.preferences.sidebarCollapsed && <JsonWorkspaceSplitter width={width} max={maxWidth} onChange={setDragWidth} onCommit={sidebarWidth => { w.setPreferences(p => ({ ...p, sidebarWidth })); setDragWidth(undefined); }} />}
+    <section className="jw-main"><button ref={toggle} className="btn-icon jw-tree-toggle" onClick={() => { if (narrow && propertiesOpen) closeProperties(); w.setPreferences(p => ({ ...p, sidebarCollapsed: !p.sidebarCollapsed })); }} aria-label="切换文件树" aria-expanded={!w.preferences.sidebarCollapsed}>☰</button>
+      {w.problem && <div className="jw-problem" role="alert"><span>{w.problem}</span>{w.doc && <button onClick={() => downloadJson(w.nodes.find(n => n.id === w.doc!.nodeId)?.name || '草稿.json', w.doc!.text)}>下载草稿</button>}<button onClick={() => void w.flush()}>重试保存</button>{w.doc && <button onClick={() => downloadRecovery(w.doc!, w.nodes.find(n => n.id === w.doc!.nodeId)?.name || '草稿.json')}>下载恢复备份</button>}<button onClick={() => void run(w.reload)}>加载本地库版本</button>{w.doc && !w.temporary && <button onClick={() => void run(async () => { const id = await createNode('json', 'root', '冲突副本.json', w.doc!.text, w.doc!.properties); w.install(undefined); await changed(); await w.select(id); })}>另存副本</button>}</div>}
+      {w.doc ? <JsonFormatter propertiesOpen={propertiesOpen} onPropertiesToggle={() => { if (propertiesOpen) closeProperties(); else setPropertiesOpen(true); }} key={`${w.doc.nodeId}:${w.loadVersion}`} darkMode={darkMode} name={w.nodes.find(n => n.id === w.doc!.nodeId)?.name || '临时草稿'} document={w.doc} disabled={w.busy} onEdit={w.edit} minified={w.preferences.isMinified} onMinifiedChange={isMinified => w.setPreferences(p => ({ ...p, isMinified }))} /> : <div className="jw-empty"><h3>创建你的 JSON 工作区</h3><p>用文件夹整理 JSON，编辑内容自动保存在本机。</p><div className="jw-actions"><button className="btn btn-primary" onClick={() => create('json')}>新建 JSON</button><button className="btn btn-secondary" onClick={() => files.current?.click()}>导入 JSON</button></div></div>}
+      {propertiesOpen && w.doc && <JsonFilePropertiesDrawer name={w.nodes.find(n => n.id === w.doc!.nodeId)?.name || '临时草稿'} properties={w.doc.properties ?? []} disabled={w.busy} status={w.status} problem={w.problem} modal={narrow} onChange={w.editProperties} onClose={closeProperties} onRetry={() => void w.flush()} />}
     </section>
     <input hidden ref={files} type="file" accept=".json,application/json" multiple onChange={e => { const values = [...(e.target.files || [])]; e.target.value = ''; void run(async () => { await requireSave(); for (const file of values) { if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} 超过 5 MiB`); await createNode('json', parentId, file.name, await file.text()); await changed(); } }); }} />
     {dialog && <JsonWorkspaceDialog {...dialog} onSubmit={dialog.submit} onClose={() => setDialog(undefined)} />}
