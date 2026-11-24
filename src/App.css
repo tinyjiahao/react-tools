@@ -8321,7 +8321,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .jw-popup-menu button:hover, .jw-popup-menu button:focus-visible { background: var(--cf-bg-hover); outline: 1px solid var(--cf-orange); }
 .jw-popup-menu .danger { color: #ef6464; }
 .jw-node-menu-trigger { flex-shrink: 0; }
-.jw-properties { position: absolute; right: 0; top: 40px; bottom: 0; width: min(360px, 100%); box-sizing: border-box; z-index: 45; display: flex; flex-direction: column; background: var(--cf-bg-card); color: var(--cf-text-primary); border-left: 1px solid var(--cf-gray-border); box-shadow: -4px 0 16px #0003; }
+.jw-properties { position: absolute; right: 0; top: 40px; bottom: 0; width: min(480px, 100%); box-sizing: border-box; z-index: 45; display: flex; flex-direction: column; background: var(--cf-bg-card); color: var(--cf-text-primary); border-left: 1px solid var(--cf-gray-border); box-shadow: -4px 0 16px #0003; }
 .jw-properties header { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border-bottom: 1px solid var(--cf-gray-border); }
 .jw-properties header > div { min-width: 0; }
 .jw-property-filename { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cf-text-muted); font-size: 12px; margin-top: 4px; }
