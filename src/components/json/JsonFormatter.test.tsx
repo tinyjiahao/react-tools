@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+vi.mock('../../lib/json/embeddedJson.worker?worker', () => ({ default: class { postMessage() {} terminate() {} } }));
 vi.mock('./JsonBreadcrumbs', () => ({ default: () => null }));
 const live = vi.hoisted(() => ({ trigger: vi.fn(), path: '', value: '', change: undefined as ((value: string) => void) | undefined }));
 vi.mock('monaco-editor', () => ({ editor: { getModel: () => undefined }, Uri: { parse: (value: string) => ({ toString: () => value }) } }));
 vi.mock('@monaco-editor/react', () => ({ default: (props: { path: string; value: string; onChange: (value: string) => void; onMount: (editor: unknown) => void }) => {
   live.path = props.path; live.value = props.value; live.change = props.onChange;
-  useEffect(() => { props.onMount({ trigger: live.trigger, getModel: () => ({ uri: { toString: () => live.path }, getValue: () => live.value, getFullModelRange: () => ({}) }), saveViewState: () => null, focus: () => {}, pushUndoStop: () => {}, executeEdits: (_source: string, edits: { text: string }[]) => { live.value = edits[0].text; live.change?.(live.value); } }); }, []);
+  useEffect(() => { props.onMount({ addAction: () => ({ dispose() {} }), trigger: live.trigger, getModel: () => ({ uri: { toString: () => live.path }, getValue: () => live.value, getFullModelRange: () => ({}) }), saveViewState: () => null, focus: () => {}, pushUndoStop: () => {}, executeEdits: (_source: string, edits: { text: string }[]) => { live.value = edits[0].text; live.change?.(live.value); } }); }, []);
   return <textarea aria-label="模拟编辑器" value={props.value} readOnly />;
 } }));
 import JsonFormatter from './JsonFormatter';

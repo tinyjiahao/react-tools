@@ -1,3 +1,5 @@
+import type { EmbeddedDraft } from './embeddedJson';
+import { validateEmbeddedDraft } from './embeddedJson';
 export interface JsonFileProperty { id: string; key: string; value: string }
 export interface WorkspaceNode { id: string; parentId: string; kind: 'folder' | 'json'; name: string; createdAt: number; updatedAt: number }
 export interface WorkspaceDocument { nodeId: string; properties?: JsonFileProperty[]; text: string; jsonPath: string; revision: number; updatedAt: number }
@@ -7,8 +9,11 @@ let connection: Promise<IDBDatabase> | undefined;
 function request<T>(r: IDBRequest<T>): Promise<T> { return new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); }
 function open(): Promise<IDBDatabase> {
   if (!connection) connection = new Promise<IDBDatabase>((resolve, reject) => {
-    const r = indexedDB.open('react-tools-json-workspace', 1);
-    r.onupgradeneeded = () => { const n = r.result.createObjectStore('nodes', { keyPath: 'id' }); n.createIndex('parentId', 'parentId'); n.createIndex('name', ['parentId', 'name'], { unique: true }); r.result.createObjectStore('documents', { keyPath: 'nodeId' }); };
+    const r = indexedDB.open('react-tools-json-workspace', 2);
+    r.onupgradeneeded = () => {
+      if (!r.result.objectStoreNames.contains('nodes')) { const n = r.result.createObjectStore('nodes', { keyPath: 'id' }); n.createIndex('parentId', 'parentId'); n.createIndex('name', ['parentId', 'name'], { unique: true }); r.result.createObjectStore('documents', { keyPath: 'nodeId' }); }
+      if (!r.result.objectStoreNames.contains('embeddedDrafts')) r.result.createObjectStore('embeddedDrafts', { keyPath: 'nodeId' });
+    };
     r.onerror = () => { connection = undefined; reject(r.error); };
     r.onblocked = () => { connection = undefined; reject(new Error('数据库升级被阻塞，请关闭其他标签页后重试')); };
     r.onsuccess = () => { r.result.onversionchange = () => { r.result.close(); connection = undefined; }; resolve(r.result); };
@@ -71,4 +76,15 @@ export function downloadRecovery(doc: WorkspaceDocument, name: string) {
   const now = Date.now();
   const backup: WorkspaceBackup = { format: 'react-tools-json', schemaVersion: 2, exportedAt: now, nodes: [{ id: doc.nodeId, name: normalizeName(name, 'json'), kind: 'json', parentId: 'root', createdAt: now, updatedAt: now }], documents: [doc] };
   downloadJson(name + '.backup.json', JSON.stringify(backup, null, 2));
+}
+
+export async function readEmbeddedDraft(nodeId: string): Promise<EmbeddedDraft | undefined> {
+  const db = await open(); const value = await request<EmbeddedDraft | undefined>(db.transaction('embeddedDrafts').objectStore('embeddedDrafts').get(nodeId));
+  if (value) validateEmbeddedDraft(value); return value;
+}
+export async function writeEmbeddedDraft(nodeId: string, draft?: EmbeddedDraft): Promise<void> {
+  if (draft) validateEmbeddedDraft(draft);
+  const db = await open(); const tx = db.transaction('embeddedDrafts', 'readwrite');
+  const done = new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onabort = () => reject(tx.error || new Error('内层草稿保存失败')); tx.onerror = () => {}; });
+  const store = tx.objectStore('embeddedDrafts'); if (draft) store.put(draft); else store.delete(nodeId); await done;
 }

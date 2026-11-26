@@ -5,6 +5,7 @@ import { safeGetJSON, safeSetItem, STORAGE_KEYS } from '../storage';
 interface Preferences { sidebarWidth: number; selectedId: string; expandedIds: string[]; sidebarCollapsed: boolean; isMinified: boolean }
 export function useJsonWorkspace() {
   const [preferences, setPreferences] = useState<Preferences>(() => { const p = safeGetJSON<Partial<Preferences>>(STORAGE_KEYS.jsonWorkspacePreferences, {}) || {}; return { sidebarWidth: typeof p.sidebarWidth === 'number' && Number.isFinite(p.sidebarWidth) ? Math.max(200, Math.min(480, p.sidebarWidth)) : 240, selectedId: typeof p.selectedId === 'string' ? p.selectedId : '', expandedIds: Array.isArray(p.expandedIds) ? p.expandedIds.filter(x => typeof x === 'string') : [], sidebarCollapsed: p.sidebarCollapsed === true, isMinified: p.isMinified === true }; });
+  const embeddedActive = useRef(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [nodes, setNodes] = useState<WorkspaceNode[]>([]); const [doc, setDoc] = useState<WorkspaceDocument>(); const [status, setStatus] = useState('加载中'); const [problem, setProblem] = useState(''); const [busy, setBusy] = useState(true); const [temporary, setTemporary] = useState(false);
   const current = useRef<WorkspaceDocument | undefined>(undefined); const dirty = useRef(false); const sequence = useRef(0); const saving = useRef<Promise<boolean> | null>(null); const loadSequence = useRef(0); const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined); const channel = useRef<BroadcastChannel | null>(null); const alive = useRef(true);
@@ -48,8 +49,8 @@ export function useJsonWorkspace() {
   useEffect(() => {
     if (typeof BroadcastChannel === 'undefined') return;
     const c = new BroadcastChannel('react-tools-json-workspace'); channel.current = c;
-    c.onmessage = () => { void (async () => { try { await refresh(); const active = current.current; if (!active) return; const latest = await readDocument(active.nodeId); if (current.current?.nodeId !== active.nodeId) return; if (latest?.revision === active.revision) return; if (dirty.current) { setStatus('存在冲突'); setProblem('其他标签页已修改或删除当前文件，请加载本地库版本或另存副本'); } else install(latest); } catch (e) { setProblem((e as Error).message); } })(); };
+    c.onmessage = () => { void (async () => { try { await refresh(); const active = current.current; if (!active) return; const latest = await readDocument(active.nodeId); if (current.current?.nodeId !== active.nodeId) return; if (latest?.revision === active.revision) return; if (dirty.current || embeddedActive.current) { setStatus('存在冲突'); setProblem('其他标签页已修改或删除当前文件，请加载本地库版本或另存副本'); } else install(latest); } catch (e) { setProblem((e as Error).message); } })(); };
     return () => { c.close(); channel.current = null; };
   }, []);
-  return { nodes, doc, loadVersion, status, problem, setProblem, preferences, setPreferences, busy, temporary, refresh, select, reload, flush, edit, editProperties, publish, install };
+  return { embeddedActive, nodes, doc, loadVersion, status, problem, setProblem, preferences, setPreferences, busy, temporary, refresh, select, reload, flush, edit, editProperties, publish, install };
 }

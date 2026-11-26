@@ -8351,3 +8351,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .jw-properties footer { padding: 12px 16px; gap: 12px; }
 .jw-properties footer [role="status"] { color: var(--cf-text-muted); font-size: 11px; }
 .jw-properties .jw-property-add { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; font-size: 12px; }
+
+/* 内嵌 JSON 编辑保持独立 model，在紧凑上下文栏中导航。 */
+.embedded-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--cf-gray-border); color: var(--cf-text-primary); background: var(--cf-bg-card); font-size: 12px; }
+.embedded-bar > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 120px; }
+.embedded-bar small { color: var(--cf-text-muted); }
+.embedded-picker { position: absolute; right: 12px; top: 45px; z-index: 60; width: min(520px, calc(100% - 24px)); max-height: 60%; overflow: auto; padding: 12px; box-sizing: border-box; border: 1px solid var(--cf-gray-border); border-radius: 6px; background: var(--cf-bg-card); box-shadow: 0 6px 20px #0004; }
+.embedded-picker > button { display: block; width: 100%; text-align: left; overflow-wrap: anywhere; margin-top: 6px; }
+.embedded-picker input { width: 100%; box-sizing: border-box; }
+
+.App-main--json .panel-header .json-preview-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 12px; color: var(--cf-text-muted); font-size: 12px; font-weight: normal; }
+.monaco-editor .json-preview-key { color: #0451a5 !important; }
+.monaco-editor .json-preview-string { color: #a31515 !important; }
+.monaco-editor .json-preview-number { color: #098658 !important; }
+.monaco-editor .json-preview-boolean, .monaco-editor .json-preview-null { color: #0000ff !important; }
+[data-theme="dark"] .monaco-editor .json-preview-key { color: #9cdcfe !important; }
+[data-theme="dark"] .monaco-editor .json-preview-string { color: #ce9178 !important; }
+[data-theme="dark"] .monaco-editor .json-preview-number { color: #b5cea8 !important; }
+[data-theme="dark"] .monaco-editor .json-preview-boolean, [data-theme="dark"] .monaco-editor .json-preview-null { color: #569cd6 !important; }

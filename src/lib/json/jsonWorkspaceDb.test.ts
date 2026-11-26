@@ -1,7 +1,8 @@
+import { embeddedCandidates } from './embeddedJson';
 // @vitest-environment node
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createNode, changeNode, deleteNode, exportWorkspace, importWorkspace, listNodes, readDocument, saveDocument } from './jsonWorkspaceDb';
+import { readEmbeddedDraft, writeEmbeddedDraft, createNode, changeNode, deleteNode, exportWorkspace, importWorkspace, listNodes, readDocument, saveDocument } from './jsonWorkspaceDb';
 beforeEach(async () => { for (const n of await listNodes()) if (n.parentId === 'root') await deleteNode(n.id); });
 describe('JSON 工作区事务', () => {
   it('保存非法 JSON 草稿且拒绝旧版本覆盖', async () => { const id = await createNode('json', 'root', '草稿'); const doc = (await readDocument(id))!; await saveDocument({ ...doc, text: '{invalid' }); await expect(saveDocument({ ...doc, text: 'null' })).rejects.toThrow('冲突'); expect((await readDocument(id))?.text).toBe('{invalid'); });
@@ -28,4 +29,14 @@ it('拒绝重复属性 ID 和超限数据，不覆盖已保存正文', async () 
   await expect(saveDocument({ ...doc, properties: [{ id: 'x', key: '', value: '' }, { id: 'x', key: '', value: '' }] })).rejects.toThrow('属性');
   await expect(saveDocument({ ...doc, properties: [{ id: 'x', key: '', value: 'a'.repeat(5 * 1024 * 1024) }] })).rejects.toThrow('5 MiB');
   expect((await readDocument(id))?.revision).toBe(doc.revision);
+});
+
+it('内层草稿独立保存，恢复非法编辑文本，不混入正文与备份', async () => {
+  const baseline = '{"content":"{}"}'; const id = await createNode('json', 'root', '内层草稿', baseline);
+  const target = embeddedCandidates(baseline)[0];
+  const draft = { nodeId: id, baseline, updatedAt: Date.now(), layers: [{ id: 'layer', parent: baseline, target, text: '{bad', initial: '{}' }] };
+  await writeEmbeddedDraft(id, draft); expect(await readEmbeddedDraft(id)).toEqual(draft);
+  expect((await readDocument(id))?.text).toBe(baseline);
+  expect(JSON.stringify(await exportWorkspace())).not.toContain('{bad');
+  await writeEmbeddedDraft(id); expect(await readEmbeddedDraft(id)).toBeUndefined();
 });
